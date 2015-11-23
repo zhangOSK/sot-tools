@@ -44,8 +44,8 @@ namespace dynamicgraph
         gripSOUT(forceSIN, "ImpedanceController("+inName+")::output(vector)::grip"),
         postureSOUT(forceSIN << postureSIN, "ImpedanceController("+inName+")::output(vector)::postureOUT"),
 	forceSOUT(forceSIN << lwSIN, "ImpedanceController("+inName+")::output(vector)::leftWristForce"),
-        m_(1.00), c_(5.0), mx_(20), cx_(100), max_dx_(0.0025), xt_1_(), q0_(), xct_1_(), xlat_1_(), xlat_2_(), xrat_1_(), xrat_2_(), t_1_(0), tf_1_(0), elapsed_(0),
-		ft_1_(), ff_1_(), ff_2_(), lw_initial_(), lwct_1_(), pos_ini_(), start_(false), stop_(false), hold_(false), init_(false), 
+        m_(1.00), c_(5.0), mx_(20), cx_(100), max_dx_(0.0025), xt_1_(), q0_(), xct_1_(), xlat_1_(), xlat_2_(), xrat_1_(), xrat_2_(), t_1_(0), tf_1_(0), elapsed_(0), walk_vel_(0.1),
+		ff_1_(), ff_2_(), lw_initial_(), lwct_1_(), pos_ini_(), start_(false), stop_(false), hold_(false), init_(false), 
 		walk_(false), walkStop_(false)
       {
        // Register signals into the entity.
@@ -59,27 +59,23 @@ namespace dynamicgraph
 	signalRegistration (postureSOUT);
 	signalRegistration (forceSOUT);
 
-    xt_1_.resize(3);	ft_1_.resize(3);	fraw_.resize(3);
-	ff_1_.resize(3);	ff_2_.resize(3);	fraw_.setZero();
-	ff_2_.setZero();	ff_1_.setZero();	xcft_1_.resize(3);
-	ft_1_.setZero();	fta_1_.resize(3);	xcft_1_.setZero();
-	ffa_1_.resize(3);	ffa_2_.resize(3);	xcft_2_.resize(3);
-	ffa_2_.setZero();	ffa_1_.setZero();	xcft_2_.setZero();
-	ffb_1_.resize(3);	ffb_2_.resize(3);	xreft_1_.resize(3);
-	ffb_2_.setZero();	ffb_1_.setZero();	xreft_1_.setZero();
-	ffc_1_.resize(3);	ffc_2_.resize(3);
-	ffc_2_.setZero();	ffc_1_.setZero();
-	ff2_.resize(3);		ff2_.setZero();
-	fta_1_.setZero();       fd_.resize(3);
-        fd_.setZero();		xct_1_.resize(3);
+    xt_1_.resize(3);	fraw_.resize(3);	fraw_.setZero();
+	ff_1_.resize(3);	ff_2_.resize(3);
+	ff_1_.setZero();	ff_2_.setZero();
+	xcft_1_.resize(3);		xcft_1_.setZero();
+	fRt_1_.resize(3);	fRt_2_.resize(3);	xcft_2_.resize(3);
+	fRt_1_.setZero();	fRt_2_.setZero();	xcft_2_.setZero();
+	xreft_1_.resize(3);	xreft_1_.setZero();
+    fd_.resize(3);		fd_.setZero();
+	xct_1_.resize(3);
 	xct_1_.setZero();	xlat_1_.resize(3);
 	xlat_2_.resize(3);	xlat_1_.setZero();
 	xlat_2_.setZero();	xrat_1_.resize(3);
 	xrat_2_.resize(3);	xrat_1_.setZero();
 	xrat_2_.setZero();
 								 // longer hose (1.25 times longHose) = 11.34 -> 8.84 (MLJ), longest Hose (1.5 times longHose) = 13.64 -> 10.64 (MLJ)
-        double massHose = 8.84; //full hose: 9.04 -> 7.04 (massless joints MLJ), heavy = 13.56, light = 4.52 (50% fullHose), semi-light = 6.78 (75% of fullHose);
-		double part = 0.29;   // 0.32 for longHose // 0.3 for heavy-longHose //Hold part % of the total weight of the Hose 
+        double massHose = 13.197; //full hose: 9.04 -> 7.04 (massless joints MLJ), heavy = 13.56, light = 4.52 (50% fullHose), semi-light = 6.78 (75% of fullHose);
+		double part = 0.22;   // 0.32 for longHose // 0.3 for heavy-longHose //Hold part % of the total weight of the Hose 
 							//for longer and longest Hose CAREFUL!!-holding weight in Z does not changes with length!!!
         double mu = 0.5;
         double gx = -9.8;
@@ -92,7 +88,7 @@ namespace dynamicgraph
 		pos_ini_(3,0) = 0;	pos_ini_(3,1) = 0;	pos_ini_(3,2) = 0;	pos_ini_(3,3) = 1;
 		iniTime_ = {0};
 		iniTime_.tm_hour = 9;	iniTime_.tm_min = 10;	iniTime_.tm_sec = 0;
-		iniTime_.tm_year = 115;	iniTime_.tm_mon = 10;	iniTime_.tm_mday = 13;
+		iniTime_.tm_year = 115;	iniTime_.tm_mon = 10;	iniTime_.tm_mday = 23;
 		// year counted from 1900
 
         wrist_.open("/home/ixchel/devel/ros-sot/sim-logs/WristPos.txt", std::ios::out);
@@ -148,6 +144,17 @@ namespace dynamicgraph
         addCommand(std::string("setDamping"),
 	           new ::dynamicgraph::command::Setter<ImpedanceController, double>
 	          (*this, &ImpedanceController::setDamping, docstring));
+
+        // setVelocity
+        docstring =
+          "\n"
+          "    Set the walking velocity when using the impedance controller\n"
+          "      takes a double number as input\n"
+          "\n";
+        addCommand(std::string("setVelocity"),
+	           new ::dynamicgraph::command::Setter<ImpedanceController, double>
+	          (*this, &ImpedanceController::setVelocity, docstring));
+
 
         // getDamping
         docstring =
@@ -223,9 +230,6 @@ namespace dynamicgraph
 			dy_ = R(1, 3)-qs(1);
 			init_ = true;
 			res_ << "----->>> dy = " << dy_ << std::endl;
-			/*std::chrono::system_clock::time_point timeNow = std::chrono::system_clock::now();
-			res_ << "==> in time = " << inTime << ", 	clock = " << timeNow << std::endl; 
-			t_1_ = inTime;   //*/
 		  }
             
 		  for(unsigned i=0; i < 3; i++)
@@ -288,25 +292,20 @@ namespace dynamicgraph
 			  }
 			}
 
-		/*	if( (inTime - t_1_) >= 2000)
-			{
-			  std::chrono::system_clock::time_point timeNow = std::chrono::system_clock::now();
-			  res_ << "==> in time = " << inTime << ", 	clock = " << timeNow << std::endl; 
-			  t_1_ = inTime;
-			}  //*/
-
 			lw = pos_ini_;
 
 			bool check = false;
 			for(unsigned i=0; i < 3; i++)
 			{
-			  if ( fabs(fr(i)) > 300.0 )
-			    check = true;	
-			}
+			  //if ( fabs(fr(i)) > 300.0 )
+			    //check = true;
 
-	   		//Check that the hose is still grip by the robot
-	  		/*if( (inTime>6000) && (fr(2) > -15.0) && (fr(2) < 0.0) && (fabs(fr(0)) < 0.5) && (fabs(fr(1)) < 0.5) )
-	    	  check = true;	  //*/
+			  if( (inTime) > 5000 && (fabs(fraw_(i)) > 300.0) )
+			  {
+				check = true;
+				break;
+			  }
+			}
 
 			if (check)
 			{
@@ -367,7 +366,7 @@ namespace dynamicgraph
 
 			if( (xla(2) < 0.106) && (xra(2) < 0.106) && walk_ && !walkStop_)
 			{
-				fstatic(0) = 2700.0;		//2800 for longHose
+				fstatic(0) = walk_vel_*(2700/0.1);		//2800 for longHose
 				//fstatic(2) = 100.0;
 				if( (fla(0) > 250) || (fla(0) < -15) )		//Abrupt changes in xla or xra are little unwanted jumps in the feet
 					fla(0) = 0.0;
@@ -448,8 +447,8 @@ namespace dynamicgraph
 		   for(unsigned k=0; k < 3; ++k)
 		     force_ << "	" << fraw_(k);
 
-		   for(unsigned k=0; k < 3; ++k)
-		     force_ << "	" << ff2_(k);
+		   //for(unsigned k=0; k < 3; ++k)
+		     //force_ << "	" << ff2_(k);
 		   force_  << "	" << realTime << std::endl;
 
 		   res_ << inTime << "	" << realTime << "	" << lw << std::endl;
@@ -542,22 +541,6 @@ namespace dynamicgraph
 		   xrat_1_ = xra;
 
            xt_1_ = xt;
-           //t_1_ = inTime;
-
-	 /*  lw(0,3) = 0.23;
-	   lw(1,3) = 0.275;
-	   lw(2,3) = 0.220;
-	   if (inTime >= 3600)
-           {
-	     lw(1, 3) = 0.42;
-	     lw(0, 3) = 0.12;
-	     lw(2, 3) = 0.698;
-           }
-
-	   for(unsigned k=0; k < 36; ++k)
-	     pos_ << qs(k) << "	" ;
-
-	   pos_ << std::endl;  //*/
          }
          return lw;
       }     
@@ -632,9 +615,9 @@ namespace dynamicgraph
          const Vector& fin = forceSIN(inTime);
          const MatrixHomogeneous& R = lwSIN(inTime);
 		 MatrixRotation MRot;
-         Vector fR, ff, ft, ffb;
+         Vector fR, ff, ft;
 	 	fR.resize(3);	ft.resize(3);
-		fR.setZero();	ffb.resize(3);
+		fR.setZero();	
 	 	ff.resize(3);	force.resize(3);
 
 		if (inTime != tf_1_)
@@ -644,49 +627,31 @@ namespace dynamicgraph
 		  ft(1) = fin(0);
 		  R.extract (MRot); 
           MRot.multiply (ft, fR);
+
+		  if( (ff_2_(2) == 0.0) && (ff_1_(2) == 0))
+		  {
+			for(unsigned i=0; i < 3; i++)
+			{
+			  ff_1_(i) = fR(i);
+			  ff_2_(i) = fR(i);
+			  fRt_1_(i) = fR(i);
+			  fRt_2_(i) = fR(i);
+			}
+			res_ << "f0: " << fR << ", " << ff_2_ << std::endl;
+		  }
+		  
 		  for(unsigned i=0; i < 3; i++)
 		  {
-			fraw_(i) = fR(i);
-	      //0.0784         //1.5622           //0.6413  
-			ff(i) = (0.0220 * ft_1_(i)) + (1.7787 * ff_1_(i)) - (0.8008 * ff_2_(i));
+			fraw_(i) = fR(i); 
+			ff(i) = (0.00024136*fR(i)) + (0.00048272*fRt_1_(i)) + (0.00024136*fRt_2_(i)) + (1.95557824*ff_1_(i)) - (0.95654368*ff_2_(i));
 			ff_2_(i) = ff_1_(i);
 			ff_1_(i) = ff(i);
-			ft_1_(i) = fR(i);
-			//force(i) = ff(i);
+			fRt_2_(i) = fRt_1_(i);
+			fRt_1_(i) = fR(i);
+			force(i) = ff(i);
 		  }
 
-		  if(ff2_(2) == 0.0)
-		  {
-			for(unsigned i=0; i < 3; i++)
-			{
-			  ffa_1_(i) = ff(i);
-			  ffa_2_(i) = ff(i);
-			  ffb_1_(i) = ff(i);
-			  ffb_2_(i) = ff(i);
-			  ffc_1_(i) = ff(i);
-			  ffc_2_(i) = ff(i);
-			  ff2_(i) = ff(i);
-			}
-			res_ << "f0: " << fR << ", " << ff2_ << std::endl;
-		  }
-		  else
-		  {
-			for(unsigned i=0; i < 3; i++)
-			{
-			  ff(i) = (0.0220*ff_2_(i)) + (1.7787*ffa_1_(i)) - (0.8008*ffa_2_(i));
-			  ffa_2_(i) = ffa_1_(i);
-			  ffa_1_(i) = ff(i);
-			  ffb(i) = (0.0038*ffa_2_(i)) + (1.9112*ffb_1_(i)) - (0.9150*ffb_2_(i));
-			  ffb_2_(i) = ffb_1_(i);
-			  ffb_1_(i) = ffb(i);
-			  ff2_(i) =(0.0038*ffb_2_(i)) + (1.9112*ffc_1_(i)) - (0.9150*ffc_2_(i));
-			  ffc_2_(i) = ffc_1_(i);
-			  ffc_1_(i) = ff2_(i);
-			  force(i) = ff2_(i);
-			}
-			//res_ << "f: " << fR << ", " << ff2_ << ", " << ff << std::endl;
-		  }
-          tf_1_ = inTime;
+		  tf_1_ = inTime;
 		}
 		else
         {

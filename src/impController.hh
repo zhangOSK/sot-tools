@@ -56,6 +56,9 @@ namespace dynamicgraph {
           c_ = inDamping;
         }
 
+		void setVelocity (const double& inVel) {
+		  walk_vel_ = inVel;
+		}
 
         double getDamping () const {
 	  return c_;
@@ -100,11 +103,11 @@ namespace dynamicgraph {
       /// \brief Parameters of the Impedance controller
         double m_, c_;
 		int mx_, cx_;
-        double dy_, max_dx_;
+        double dy_, max_dx_, walk_vel_;
         Vector xt_1_, q0_, xct_1_, xlat_1_, xlat_2_, xrat_1_, xrat_2_, xcft_1_, xcft_2_, xreft_1_;
         int t_1_, tf_1_, elapsed_;        
-	Vector fd_, ft_1_, ff_1_, ff_2_, fta_1_, fraw_;
-	Vector ffa_1_, ffa_2_, ffb_1_, ffb_2_, ffc_1_, ffc_2_, ff2_;
+	Vector fd_, ff_1_, ff_2_, fraw_;
+	Vector fRt_1_, fRt_2_;
 	MatrixHomogeneous lw_initial_, lwct_1_, pos_ini_;
 
       // Temporary variables for internal computations

@@ -40,11 +40,12 @@ namespace dynamicgraph
         lwSIN(0, "ImpedanceController("+inName+")::input(MatrixHomo)::leftWristIN"),
         laSIN(0, "ImpedanceController("+inName+")::input(MatrixHomo)::leftAnkleIN"),
         raSIN(0, "ImpedanceController("+inName+")::input(MatrixHomo)::rightAnkleIN"),
+		velocitySIN(0, "ImpedanceController("+inName+")::input(vector)::velocityIN"),
         lwSOUT(forceSIN << lwSIN << laSIN, "ImpedanceController("+inName+")::output(MatrixHomo)::leftWristOUT"),
         gripSOUT(forceSIN, "ImpedanceController("+inName+")::output(vector)::grip"),
         postureSOUT(forceSIN << postureSIN, "ImpedanceController("+inName+")::output(vector)::postureOUT"),
 	forceSOUT(forceSIN << lwSIN, "ImpedanceController("+inName+")::output(vector)::leftWristForce"),
-        m_(1.00), c_(5.0), mx_(20), cx_(100), max_dx_(0.0025), xt_1_(), q0_(), xct_1_(), xlat_1_(), xlat_2_(), xrat_1_(), xrat_2_(), t_1_(0), tf_1_(0), elapsed_(0), walk_vel_(0.1),
+        m_(1.00), c_(5.0), mx_(20), cx_(100), max_dx_(0.0025), xt_1_(), q0_(), xct_1_(), xlat_1_(), xlat_2_(), xrat_1_(), xrat_2_(), t_1_(0), tf_1_(0), elapsed_(0),
 		ff_1_(), ff_2_(), lw_initial_(), lwct_1_(), pos_ini_(), start_(false), stop_(false), hold_(false), init_(false), 
 		walk_(false), walkStop_(false)
       {
@@ -55,6 +56,7 @@ namespace dynamicgraph
         signalRegistration (laSIN);
         signalRegistration (raSIN);
 	signalRegistration (postureSIN);
+    signalRegistration (velocitySIN);
 	signalRegistration (gripSOUT);
 	signalRegistration (postureSOUT);
 	signalRegistration (forceSOUT);
@@ -145,17 +147,6 @@ namespace dynamicgraph
 	           new ::dynamicgraph::command::Setter<ImpedanceController, double>
 	          (*this, &ImpedanceController::setDamping, docstring));
 
-        // setVelocity
-        docstring =
-          "\n"
-          "    Set the walking velocity when using the impedance controller\n"
-          "      takes a double number as input\n"
-          "\n";
-        addCommand(std::string("setVelocity"),
-	           new ::dynamicgraph::command::Setter<ImpedanceController, double>
-	          (*this, &ImpedanceController::setVelocity, docstring));
-
-
         // getDamping
         docstring =
           "\n"
@@ -211,6 +202,7 @@ namespace dynamicgraph
 		const MatrixHomogeneous& ra = raSIN(inTime);
 		const Vector& fr = forceSOUT.access(inTime);
 		const Vector& qs = postureSIN(inTime);
+		const Vector& vel = velocitySIN(inTime);
 		const double& dt = 0.005; //inTime - t_1_;
 		Vector xt, xg, imp, df, ftemp, xla, xra, fla, fra, fstatic, vla, vra, xcf;
 		fla.resize(3);	fra.resize(3);	fstatic.resize(3);
@@ -366,7 +358,7 @@ namespace dynamicgraph
 
 			if( (xla(2) < 0.106) && (xra(2) < 0.106) && walk_ && !walkStop_)
 			{
-				fstatic(0) = walk_vel_*(2700/0.1);		//2800 for longHose
+				fstatic(0) = vel(0)*(2700/0.1);		//2800 for longHose
 				//fstatic(2) = 100.0;
 				if( (fla(0) > 250) || (fla(0) < -15) )		//Abrupt changes in xla or xra are little unwanted jumps in the feet
 					fla(0) = 0.0;

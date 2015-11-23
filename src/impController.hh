@@ -56,10 +56,6 @@ namespace dynamicgraph {
           c_ = inDamping;
         }
 
-		void setVelocity (const double& inVel) {
-		  walk_vel_ = inVel;
-		}
-
         double getDamping () const {
 	  return c_;
         }
@@ -89,7 +85,8 @@ namespace dynamicgraph {
         Vector& computeForce(Vector& force, const int& inTime);
 
         SignalPtr < ::dynamicgraph::Vector, int> forceSIN;
-	SignalPtr < ::dynamicgraph::Vector, int> postureSIN;        
+	SignalPtr < ::dynamicgraph::Vector, int> postureSIN;
+	SignalPtr < ::dynamicgraph::Vector, int> velocitySIN;   
 	SignalPtr <MatrixHomogeneous, int> lwSIN;
 	SignalPtr <MatrixHomogeneous, int> laSIN;
 	SignalPtr <MatrixHomogeneous, int> raSIN;
@@ -103,7 +100,7 @@ namespace dynamicgraph {
       /// \brief Parameters of the Impedance controller
         double m_, c_;
 		int mx_, cx_;
-        double dy_, max_dx_, walk_vel_;
+        double dy_, max_dx_;
         Vector xt_1_, q0_, xct_1_, xlat_1_, xlat_2_, xrat_1_, xrat_2_, xcft_1_, xcft_2_, xreft_1_;
         int t_1_, tf_1_, elapsed_;        
 	Vector fd_, ff_1_, ff_2_, fraw_;

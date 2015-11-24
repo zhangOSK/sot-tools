@@ -74,6 +74,9 @@ namespace dynamicgraph {
 	void save();
 	void hold();
 
+	void openGripper();
+	void closeGripper();
+
       protected:
 
 
@@ -109,7 +112,7 @@ namespace dynamicgraph {
 
       // Temporary variables for internal computations
         MatrixRotation Rot_;
-        bool start_, stop_, hold_, init_, walk_, walkStop_;
+        bool start_, stop_, hold_, init_, walk_, walkStop_, open_, close_;
 	std::ofstream wrist_, force_, res_, pos_, check_; 
 
 	//For realtime

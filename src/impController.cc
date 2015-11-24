@@ -47,7 +47,7 @@ namespace dynamicgraph
 	forceSOUT(forceSIN << lwSIN, "ImpedanceController("+inName+")::output(vector)::leftWristForce"),
         m_(1.00), c_(5.0), mx_(20), cx_(100), max_dx_(0.0025), xt_1_(), q0_(), xct_1_(), xlat_1_(), xlat_2_(), xrat_1_(), xrat_2_(), t_1_(0), tf_1_(0), elapsed_(0),
 		ff_1_(), ff_2_(), lw_initial_(), lwct_1_(), pos_ini_(), start_(false), stop_(false), hold_(false), init_(false), 
-		walk_(false), walkStop_(false)
+		walk_(false), walkStop_(false), open_(false), close_(false)
       {
        // Register signals into the entity.
         signalRegistration (lwSOUT); 
@@ -188,6 +188,14 @@ namespace dynamicgraph
         addCommand (std::string("save"),
                     makeCommandVoid0 (*this, &ImpedanceController::save,
                                       docCommandVoid0 ("Save data in file")));
+
+        addCommand (std::string("openGripper"),
+                    makeCommandVoid0 (*this, &ImpedanceController::openGripper,
+                                      docCommandVoid0 ("Open both grippers")));
+
+        addCommand (std::string("closeGripper"),
+                    makeCommandVoid0 (*this, &ImpedanceController::closeGripper,
+                                      docCommandVoid0 ("Close both grippers")));
       }
 
       ImpedanceController::~ImpedanceController()
@@ -220,6 +228,9 @@ namespace dynamicgraph
 		  {	     
 			// Save the distance from wrist to the  waist at the starting position
 			dy_ = R(1, 3)-qs(1);
+			if(dy_ < 0.33)
+				dy_ = 0.331007;
+
 			init_ = true;
 			res_ << "----->>> dy = " << dy_ << std::endl;
 		  }
@@ -589,12 +600,19 @@ namespace dynamicgraph
 		   q = qt;
 		   hold();
         }
-		else if(hold_)
+		else if(hold_ || open_)
 		{
 		   qt = qs;
 		   qt(28) = 0.75;
 		   qt(35) = 0.75;
 		   q = qt;
+		}
+		else if(close_)
+		{
+		  qt = qs;
+		  qt(28) = 0.15;
+		  qt(35) = 0.15;
+		  q = qt;
 		}
 		else
 		  q = qs;
@@ -694,9 +712,9 @@ namespace dynamicgraph
          }
       }
 
-      void ImpedanceController::hold()
+	  void ImpedanceController::hold()
       {
-	 if(start_ && !stop_)
+	    if(start_ && !stop_)
          {
            hold_ = true;
 	   //start_ = false;
@@ -706,6 +724,18 @@ namespace dynamicgraph
 	   res_ << "The Controller was stopped!! Hose released!! at t = " << (t_1_+1) << std::endl;
          }
       }
+
+	  void ImpedanceController::openGripper()
+	  {
+		close_ = false;
+		open_ = true;
+	  }
+
+	  void ImpedanceController::closeGripper()
+	  {
+		close_ = true;
+		open_ = false;
+	  }
 
       DYNAMICGRAPH_FACTORY_ENTITY_PLUGIN(ImpedanceController, "ImpedanceController");
     } // namespace tools

@@ -1,7 +1,7 @@
 /*
  *  Copyright 2010 CNRS
  *
- *  
+ *
  */
 
 #ifndef IMPEDANCE_CONTROLLER_HH
@@ -24,15 +24,15 @@ namespace dynamicgraph {
       using dynamicgraph::Vector;
       using dynamicgraph::Signal;
       using dynamicgraph::sot::MatrixHomogeneous;
-    /**
+      /**
        \brief Impedance controller for manipulation a Hose
 
        This class implements an impedance control for the left wrist of the robot
     */
       class ImpedanceController : public Entity
       {
-       
-	DYNAMIC_GRAPH_ENTITY_DECL();
+
+        DYNAMIC_GRAPH_ENTITY_DECL();
         ImpedanceController(const std::string& inName);
 
         ~ImpedanceController();
@@ -40,16 +40,16 @@ namespace dynamicgraph {
 
         /// Header documentation of the python class
         virtual std::string getDocString () const {
-	  return
-	    "Impedance controller for manipulating a hose\n";
+          return
+              "Impedance controller for manipulating a hose\n";
         }
-      
+
         void setMass (const double& inMass) {
-	  m_ = inMass;
+          m_ = inMass;
         }
 
         double getMass () const {
-	  return m_;
+          return m_;
         }
 
         void setDamping (const double& inDamping) {
@@ -57,25 +57,25 @@ namespace dynamicgraph {
         }
 
         double getDamping () const {
-	  return c_;
+          return c_;
         }
 
         void setForceDes (const Vector& inForce) {
-	  fd_ = inForce;
+          fd_ = inForce;
         }
 
 
         Vector getForceDes () const {
-  	  return fd_;
+          return fd_;
         }
 
-	void start();
-	void stop();
-	void save();
-	void hold();
+        void start();
+        void stop();
+        void save();
+        void hold();
 
-	void openGripper();
-	void closeGripper();
+        void openGripper();
+        void closeGripper();
 
       protected:
 
@@ -83,40 +83,43 @@ namespace dynamicgraph {
       private:
 
         MatrixHomogeneous& computeControlOutput(MatrixHomogeneous& lw, const int& inTime);
-	Vector& computeSelection(Vector& selec, const int& inTime);
+        Vector& computeSelection(Vector& selec, const int& inTime);
         Vector& computePosture(Vector& q, const int& inTime);
         Vector& computeForce(Vector& force, const int& inTime);
 
         SignalPtr < ::dynamicgraph::Vector, int> forceSIN;
-	SignalPtr < ::dynamicgraph::Vector, int> postureSIN;
-	SignalPtr < ::dynamicgraph::Vector, int> velocitySIN;   
-	SignalPtr <MatrixHomogeneous, int> lwSIN;
-	SignalPtr <MatrixHomogeneous, int> laSIN;
-	SignalPtr <MatrixHomogeneous, int> raSIN;
-        //SignalTimeDependent <MatrixHomogeneous, int> lwSIN;
+        SignalPtr < ::dynamicgraph::Vector, int> postureSIN;
+        SignalPtr < ::dynamicgraph::Vector, int> velocitySIN;
 
         SignalTimeDependent <MatrixHomogeneous, int > lwSOUT;
-	SignalTimeDependent < Vector, int> gripSOUT;    
-	SignalTimeDependent <Vector, int> postureSOUT; 
-	SignalTimeDependent <Vector, int> forceSOUT;
 
-      /// \brief Parameters of the Impedance controller
+        SignalPtr <MatrixHomogeneous, int> lwSIN;
+        SignalPtr <MatrixHomogeneous, int> laSIN;
+        SignalPtr <MatrixHomogeneous, int> raSIN;
+        //SignalTimeDependent <MatrixHomogeneous, int> lwSIN;
+
+
+        SignalTimeDependent < Vector, int> gripSOUT;
+        SignalTimeDependent <Vector, int> postureSOUT;
+        SignalTimeDependent <Vector, int> forceSOUT;
+
+        /// \brief Parameters of the Impedance controller
         double m_, c_;
-		int mx_, cx_;
+        int mx_, cx_;
         double dy_, max_dx_;
         Vector xt_1_, q0_, xct_1_, xlat_1_, xlat_2_, xrat_1_, xrat_2_, xcft_1_, xcft_2_, xreft_1_;
-        int t_1_, tf_1_, elapsed_;        
-	Vector fd_, ff_1_, ff_2_, fraw_;
-	Vector fRt_1_, fRt_2_;
-	MatrixHomogeneous lw_initial_, lwct_1_, pos_ini_;
+        int t_1_, tf_1_, elapsed_;
+        Vector fd_, ff_1_, ff_2_, fraw_;
+        Vector fRt_1_, fRt_2_;
+        MatrixHomogeneous lw_initial_, lwct_1_, pos_ini_;
 
-      // Temporary variables for internal computations
+        // Temporary variables for internal computations
         MatrixRotation Rot_;
         bool start_, stop_, hold_, init_, walk_, walkStop_, open_, close_;
-	std::ofstream wrist_, force_, res_, pos_, check_; 
+        std::ofstream wrist_, force_, res_, pos_, check_;
 
-	//For realtime
-	struct tm iniTime_;
+        //For realtime
+        struct tm iniTime_;
 
       }; // class ImpedanceController
     } // namespace tools

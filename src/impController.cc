@@ -227,12 +227,14 @@ namespace dynamicgraph
 		  if(!init_)
 		  {	     
 			// Save the distance from wrist to the  waist at the starting position
-			dy_ = R(1, 3)-qs(1);
-			if(dy_ < 0.33)
-				dy_ = 0.331007;
+			dy_ = R(1, 3)-qs(1);	
+			lw_initial_ = R;
+			//if(dy_ < 0.3300)
+				dy_ = 0.34020; //0.331007;
 
 			init_ = true;
 			res_ << "----->>> dy = " << dy_ << std::endl;
+			res_ << "===>>> lw ini = " << lw_initial_ << std::endl;
 		  }
             
 		  for(unsigned i=0; i < 3; i++)
@@ -249,8 +251,8 @@ namespace dynamicgraph
 
           //t_1_ = inTime;
 		  lw = R;
-		  if(!start_ && !hold_)
-			lw_initial_ = R;
+		 // if(!start_ && !hold_)
+			//lw_initial_ = R;
 
 		  if(hold_)
 		  {
@@ -303,7 +305,7 @@ namespace dynamicgraph
 			  //if ( fabs(fr(i)) > 300.0 )
 			    //check = true;
 
-			  if( (inTime) > 5000 && (fabs(fraw_(i)) > 300.0) )
+			  if( (inTime) > 10 && (fabs(fraw_(i)) > 300.0) )
 			  {
 				check = true;
 				break;
@@ -454,7 +456,7 @@ namespace dynamicgraph
 		     //force_ << "	" << ff2_(k);
 		   force_  << "	" << realTime << std::endl;
 
-		   res_ << inTime << "	" << realTime << "	" << lw << std::endl;
+		   res_ << inTime << "	" << realTime << "	|" << qs(1) << "|	" << lw << std::endl;
 		   check_ << inTime << "	";
 			double ccx = (c_/dt) * (xt(0) - xt_1_(0)), ccz = (c_/dt) * (xt(2) - xt_1_(2));
 			double ddx = (2 * xt(0)) - xt_1_(0), ddz = (2 * xt(2)) - xt_1_(2);
@@ -545,6 +547,20 @@ namespace dynamicgraph
 
            xt_1_ = xt;
          }
+
+		 if( start_ && ((fabs(fr(0)) < 5.0) || (fabs(fr(1)) < 5.0 )) && !walk_)
+		 {
+		   lw(0,3) = lw_initial_(0,3);
+		   lw(2,3) = lw_initial_(2,3);
+		   res_ << "~~~~ final = " << lw << std::endl;
+		 }
+		 else if(start_ && walk_ && fabs(fr(2)) < 15.0)
+		 {
+		   lw(0,3) = xla(0);
+		   lw(2,3) = lw_initial_(2,3);
+		   res_ << "~~~~ finalW = " << lw << std::endl;
+         } //*/
+
          return lw;
       }     
 

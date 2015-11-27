@@ -76,7 +76,7 @@ namespace dynamicgraph
         xrat_2_.resize(3);	xrat_1_.setZero();
         xrat_2_.setZero();
         // longer hose (1.25 times longHose) = 11.34 -> 8.84 (MLJ), longest Hose (1.5 times longHose) = 13.64 -> 10.64 (MLJ)
-        double massHose = 13.197; //full hose: 9.04 -> 7.04 (massless joints MLJ), heavy = 13.56, light = 4.52 (50% fullHose), semi-light = 6.78 (75% of fullHose);
+        double massHose = 13.197; //full hose: 9.04 -> 7.04 (massless joints MLJ), heavy = 13.56, light = 4.52 (50% fullHose), semi-light = 6.78 (75% of fullHose),  coiled hose: 13.197
         double part = 0.22;   // 0.32 for longHose // 0.3 for heavy-longHose //Hold part % of the total weight of the Hose
         //for longer and longest Hose CAREFUL!!-holding weight in Z does not changes with length!!!
         double mu = 0.5;
@@ -225,7 +225,7 @@ namespace dynamicgraph
         const Vector& fr = forceSOUT.access(inTime);
         const Vector& qs = postureSIN(inTime);
         const Vector& vel = velocitySIN(inTime);
-        const double& dt = 0.005, dz =pos_ini_(2,3)-0.648703; //inTime - t_1_;
+        const double& dt = 0.005; //inTime - t_1_;
         Vector xt, xg, imp, df, ftemp, xla, xra, fla, fra, fstatic, vla, vra, xcf;
         fla.resize(3);	fra.resize(3);	fstatic.resize(3);
         xt.resize(3);	 xg.resize(3);	fstatic.setZero();
@@ -243,8 +243,8 @@ namespace dynamicgraph
             // Save the distance from wrist to the  waist at the starting position
             dy_ = R(1, 3)-qs(1);
             lw_initial_ = R;
-            //if(dy_ < 0.3300)
-            dy_ = 0.331007; //0.34020;
+            for(unsigned i=0; i < 3; i++)
+             xreft_1_(i) = R(i, 3);
 
             init_ = true;
             res_ << "----->>> dy = " << dy_ << std::endl;
@@ -263,21 +263,21 @@ namespace dynamicgraph
             xcft_2_(i) = xct_1_(i);
           }
 
-          //t_1_ = inTime;
+          t_1_ = inTime;
+          lw = pos_ini_;
           lw(0,3) = qs(0)+pos_ini_(0,3);
           lw(1,3) = qs(1)+pos_ini_(1,3);
           lw(2,3) = qs(2)-0.648703+pos_ini_(2,3);
-          res_ << "~~~~ final = " << lw << std::endl;
           // if(!start_ && !hold_)
           //lw_initial_ = R;
 
           if(hold_)
           {
             //lw(0,3) = qs(0);
-            lw = lw_initial_;
-            lw(0, 3) = (2*R(0,3) + qs(0) + xt_1_(0) + xreft_1_(0))/5;
-            lw(1, 3) = qs(1) + dy_;
-            lw(2, 3) = (2*R(2,3) + lw_initial_(2,3) + xt_1_(2) + xreft_1_(2))/5;
+            lw = pos_ini_;
+            lw(0, 3) = (3*R(0,3) + (qs(0) +pos_ini_(0,3)) + xreft_1_(0))/5;
+            lw(1, 3) = ( (qs(1)+pos_ini_(1,3)) + 2*R(1,3))/3;
+            lw(2, 3) = (3*R(2,3) + (qs(2)-0.648703+pos_ini_(2,3)) + xreft_1_(2))/5;
 
             res_ << "**" << inTime << "	" << lw << std::endl;
             wrist_ << inTime;
@@ -294,6 +294,15 @@ namespace dynamicgraph
           }
           lwct_1_ = R;
 
+          if(stop_)
+          {
+            lw = R;
+            lw(0,3) = ( (qs(0)+pos_ini_(0,3)) + 2*R(0,3) + xreft_1_(0))/4;
+            lw(1,3) = ( (qs(1)+pos_ini_(1,3)) + 2*R(1,3) + xreft_1_(1))/4;
+            lw(2,3) = ( (qs(2)-0.648703+pos_ini_(2,3)) + 2*R(2,3) + xreft_1_(2))/4;
+            res_ << "~~~~ stopped = " << inTime << "    " << lw << std::endl;
+          }         
+
           //wrist_ << "---" << inTime << "	" << lw << std::endl;
         }
         else if (start_)
@@ -306,33 +315,19 @@ namespace dynamicgraph
             xra(i) = ra(i, 3);
             vla(i) = 0.0;
             vra(i) = 0.0;
-            for(unsigned j=0; j < 3; j++)
-            {
-              lw(i, j) = 0.0;
-              if (i == j)
-                lw(i, j) = 1.0;
-            }
           }
 
-          lw = pos_ini_;
-
-          bool check = false;
+          int over = 0;
           for(unsigned i=0; i < 3; i++)
           {
-            //if ( fabs(fr(i)) > 300.0 )
-            //check = true;
-
-            if( (inTime) > 10 && (fabs(fraw_(i)) > 300.0) )
-            {
-              check = true;
-              break;
-            }
+            if( (vel(0) != 0.0) && (fabs(fraw_(i)) > 400.0) )
+              over = over + 1;
           }
 
-          if (check)
+          if (over > 2)
           {
             lw = R;
-            res_ << fr(0) << "	" << fr(1) << "	" << fr(2) << std::endl;
+            res_ << "fr = " << fr << ",  fraw = " << fraw_ << std::endl;
             hold();
           }
 
@@ -364,13 +359,14 @@ namespace dynamicgraph
             fla(2) = ( (cx_*c_/dt) * (xla(2) - xlat_1_(2)) );
 
           //if( ((fla(0) > 50.0) || (fra(0) > 50.0)) && !walk_)
-          if( ((vla(2) > 0.1) || (vra(2) > 0.1)) && ((xla(2) > 0.107) || (xra(2) > 0.107)) && !walk_)
+          bool floor = ( fabs(xla(2) < 0.10505) && fabs(xra(2) < 0.10505) );
+          if( ((vla(2) > 0.1) || (vra(2) > 0.1)) && ((xla(2) > 0.106) || (xra(2) > 0.106)) && !walk_)
           {
             walk_ = true;
             walkStop_ = false;
             res_ << "======> Started walking at : " << inTime*0.005 << ", realtime: " << realTime << std::endl;
           }
-          else if( ( (((fabs(vla(2))) < 0.0001) && ((fabs(vra(2))) < 0.0001) && (elapsed_ > 45) ) || ((fabs(xla(0)-xra(0)) < 0.00001) && (fabs(vla(0)) < 0.001)) ) && walk_)
+          else if( ( (((fabs(vla(2))) < 0.0001)&&((fabs(vra(2))) < 0.0001)) || ((fabs(xla(0)-xra(0)) < 0.00001)&&(fabs(vla(0)) < 0.001)) ) && walk_ && floor && (vel(0) ==0.0) )
           {
             walkStop_ = true;
             walk_ = false;
@@ -386,9 +382,9 @@ namespace dynamicgraph
             }
           }
 
-          if( (xla(2) < 0.106) && (xra(2) < 0.106) && walk_ && !walkStop_)
+          if( (xla(2) < 0.1051) && (xra(2) < 0.1051) && walk_ && !walkStop_)
           {
-            fstatic(0) = vel(0)*(2700/0.1);		//2800 for longHose
+            fstatic(0) = vel(0)*(20000);		//2700/0.1 for longHose
             //fstatic(2) = 100.0;
             if( (fla(0) > 250) || (fla(0) < -15) )		//Abrupt changes in xla or xra are little unwanted jumps in the feet
               fla(0) = 0.0;
@@ -396,9 +392,9 @@ namespace dynamicgraph
               fra(0) = 0.0;  //*/
 
             elapsed_ = elapsed_ + 1;
-            if( (xla(2) > xra(2)) && (xla(2) > 0.10501) )
+            if( (xla(2) > xra(2)) && (xla(2) > 0.10505) )
               fra.setZero();
-            else if( (xra(2) > xla(2)) && (xra(2) > 0.10501) )
+            else if( (xra(2) > xla(2)) && (xra(2) > 0.10505) )
               fla.setZero();
             else
             {
@@ -412,9 +408,9 @@ namespace dynamicgraph
             for(unsigned i=0; i < 3; i++)
               fstatic(i) = 0.0;
 
-            if( xla(2) > 0.1055 )
+            if( xla(2) > 0.1052 )
               fra.setZero();
-            else if(xra(2) > 0.1055)
+            else if(xra(2) > 0.1052)
               fla.setZero();
           }
 
@@ -473,7 +469,7 @@ namespace dynamicgraph
           //force_ << "	" << ff2_(k);
           force_  << "	" << realTime << std::endl;
 
-          res_ << inTime << "	" << realTime << "	|" << qs(1) << "|	" << lw << std::endl;
+          res_ << inTime << "	" << realTime << "	|" << qs(0) << ", "  << qs(1) << "|	" << lw << std::endl;
           check_ << inTime << "	";
           double ccx = (c_/dt) * (xt(0) - xt_1_(0)), ccz = (c_/dt) * (xt(2) - xt_1_(2));
           double ddx = (2 * xt(0)) - xt_1_(0), ddz = (2 * xt(2)) - xt_1_(2);
@@ -486,54 +482,44 @@ namespace dynamicgraph
           pos_ << "	" << df(0) << "	" << df(1) << "	" << df(2);
           pos_ << "	" << realTime << std::endl;
 
+          double sign = fabs(vel(0))/ vel(0);
+          if (sign == 0.0)
+            sign = 1.0;
 
-          if( (fabs(lw(0,3) - xt(0)) > max_dx_ ) && ((xla(2) >= 0.1080) || (xra(2) >= 0.1080)) )
+          if( lw(0,3) > (qs(0)+0.20) )
           {
-            lw(0,3) = xt(0) + max_dx_;
-            res_ << "--> vx exceeding max limit when wlkg!! changing to xt= " << lw(0,3) << std::endl;
-          }
-          else if( walkStop_ && (fabs(lw(0,3) - xt(0)) > 2*max_dx_) )
-          {
-            if( (xt(0) + 2*max_dx_) < (qs(0)+0.15) )
-              lw(0,3) = xt(0) + 2*max_dx_;
-            else
-              lw(0,3) = qs(0) + 0.15;
-            res_ << "--> vx exceeding max limit!! changing to xt= " << lw(0,3) << std::endl;
-          }
-
-          if( lw(0,3) > (qs(0)+0.15) )
-          {
-            if( (xla(2) >= 0.1060) && (vla(0) < 0.5) )
-              lw(0,3) = xt(0) + fabs(xla(0) - xlat_1_(0));
-            else if( (xra(2) >= 0.1060) && (vra(0) < 0.5) )
-              lw(0,3) = xt(0) + fabs(xra(0) - xrat_1_(0));
-            else
-            {
-              if( (xla(2) < 0.1060) && (xra(2) < 0.1060) )
-              {
-                if( walkStop_ || (xt(0) < xla(0)) )
-                  lw(0,3) = qs(0) + 0.15;
-                else
-                  lw(0,3) = (xreft_1_(0) + xt(0))/2;
-              }
-              else if( (xt(0) + max_dx_) < (qs(0)+0.15) )
-                lw(0,3) = xt(0) + max_dx_;
-              else
-                lw(0,3) = qs(0) + 0.15;
-            }
+            /*if( (xla(2) > 0.1051) && (xreft_1_(0) >= xla(0)) )
+              lw(0,3) = xreft_1_(0) + (xla(0) - xlat_1_(0));
+            else if( xra(2) > 0.1051 && (xreft_1_(0) >= xra(0)) )
+              lw(0,3) = xreft_1_(0) + (xra(0) - xrat_1_(0));
+            else //*/
+            lw(0,3) = qs(0) + sign*0.20;
+            
             res_ << "--> dx exceeding max limit!! changing to xt= " << lw(0,3) << std::endl;
           }
 
+          sign = fabs(lw(0,3) - xt(0))/(lw(0,3) - xt(0));
+          if( (fabs(lw(0,3) - xreft_1_(0)) > max_dx_ ) && ((xla(2) >= 0.1052) || (xra(2) >= 0.1052)) )
+          {
+            lw(0,3) = xreft_1_(0) + sign*max_dx_;
+            res_ << "--> vx exceeding max limit when wlkg!! changing to xt= " << lw(0,3) << std::endl;
+          }
+          else if( walkStop_ && (fabs(lw(0,3) - xreft_1_(0)) > 2*max_dx_) )
+          {
+            lw(0,3) = xreft_1_(0) + sign*2*max_dx_;
+            res_ << "--> vx exceeding max limit!! changing to xt= " << lw(0,3) << ",    vel sign= " << sign << std::endl;
+          }
 
-          if( (lw(0,3) < xla(0)) && (xla(2) < 0.106) && (xra(2) < 0.106) && walk_)
+
+     /*     if( (lw(0,3) < xla(0)) && (xla(2) < 0.1052) && (xra(2) < 0.1052) && walk_)
           {
             lw(0,3) = xla(0);
             res_ << "==> dx smaller than xla while in DST!! changing to xt= " << lw(0,3) << std::endl;
-          }
+          } //*/
 
-          if( inTime > 4500)
+          if( inTime > 10)
           {
-            if( ((lw(2,3) < 0.695) || (lw(2,3) > 0.80)) && ((xla(2) >= 0.1060) || (xra(2) >= 0.01060) ))
+            if( ((lw(2,3) < 0.695) || (lw(2,3) > 0.80)) && ((xla(2) >= 0.1052) || (xra(2) >= 0.01052) ))
             {
               lw(2,3) = (xt_1_(2) + xt(2) + xreft_1_(2))/3;   //before was using x(t)
               res_ << "--> Z below 0.695 or over 0.730 while wkg, chaging z -> " << lw(2,3) << std::endl;
@@ -552,10 +538,6 @@ namespace dynamicgraph
           wrist_ << "	" << xla(0) << "	" << xra(0) << "	" << xla(1) << "	" << xra(1);
           wrist_ << "	" << xla(2) << "	" << xra(2) << "	" << xg(0) << "	" << xg(2) << "	" << realTime << std::endl;
 
-          for(unsigned i=0; i < 3; i++)
-            xreft_1_(i) = lw(i,3);
-
-
           lwct_1_ = lw;
           xlat_2_ = xlat_1_;
           xlat_1_ = xla;
@@ -565,12 +547,17 @@ namespace dynamicgraph
           xt_1_ = xt;
         }
 
-        if( start_ && ((fabs(fr(0)) < 50.0) || (fabs(fr(1)) < 50.0 )) && fabs(fr(2)) < 5000.0)
+        if( start_ && ((fabs(fr(0)) < 2.0) && (fabs(fr(1)) < 2.0 )) && (fr(2) > -12.0) && (fr(2) < -10.0))
         {
-          lw(0,3) = qs(0)+pos_ini_(0,3);
-          lw(2,3) = pos_ini_(2,3);
+          lw(0,3) = ((qs(0)+pos_ini_(0,3)) + xreft_1_(0) + 3*xt(0))/5;
+          lw(2,3) = (pos_ini_(2,3) + xreft_1_(2) + 3*xt(2))/5;
+          res_ << "~~~~ " << inTime << ", fr = " << fr << std::endl;
           res_ << "~~~~ final = " << lw << std::endl;
         }
+
+        t_1_ = inTime;
+        for(unsigned i=0; i < 3; i++)
+          xreft_1_(i) = lw(i,3);
 
         return lw;
       }
@@ -714,6 +701,7 @@ namespace dynamicgraph
         {
           stop_ = true;
           start_ = false;
+          res_ << "=========Controller stoppped at t = " << t_1_ << std::endl;
         }
         else
         {
@@ -748,7 +736,7 @@ namespace dynamicgraph
           //stop_  = true;
           //throw std::runtime_error
           //("The Controller was stopped!! Hose released!!");
-          res_ << "The Controller was stopped!! Hose released!! at t = " << (t_1_+1) << std::endl;
+          res_ << "The Controller was stopped!! Hose released!! at t = " << (t_1_) << std::endl;
         }
       }
 

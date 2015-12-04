@@ -18,6 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include <time.h>
+#include <math.h>
 
 namespace dynamicgraph
 {
@@ -41,22 +42,19 @@ namespace dynamicgraph
         raSIN(0, "ImpedanceController("+inName+")::input(MatrixHomo)::rightAnkleIN"),
         velocitySIN(0, "ImpedanceController("+inName+")::input(vector)::velocityIN"),
         lwSOUT(forceSIN << lwSIN << laSIN, "ImpedanceController("+inName+")::output(MatrixHomo)::leftWristOUT"),
-        gripSOUT(forceSIN, "ImpedanceController("+inName+")::output(vector)::grip"),
         postureSOUT(forceSIN << postureSIN, "ImpedanceController("+inName+")::output(vector)::postureOUT"),
         forceSOUT(forceSIN << lwSIN, "ImpedanceController("+inName+")::output(vector)::leftWristForce"),
-        m_(1.00), c_(5.0), mx_(20), cx_(100), max_dx_(0.0025), xt_1_(), q0_(), xct_1_(), xlat_1_(), xlat_2_(), xrat_1_(), xrat_2_(), t_1_(0), tf_1_(0), elapsed_(0),
-        ff_1_(), ff_2_(), lw_initial_(), lwct_1_(), pos_ini_(), start_(false), stop_(false), hold_(false), init_(false),
-        walk_(false), walkStop_(false), open_(false), close_(false), iniTime_(std::tm())
+        m_(1.00), c_(5.0), mx_(20), cx_(100), max_dx_(0.0025), dist_(0.0), vel_fix_(0.0), t_1_(0), tf_1_(0), elapsed_(0),
+        start_(false), stop_(false), hold_(false), init_(false), walk_(false), walkStop_(false), open_(false), close_(false), iniTime_(std::tm())
       {
         // Register signals into the entity.
-        signalRegistration (raSIN);
         signalRegistration (forceSIN);
         signalRegistration (postureSOUT);
-        signalRegistration (velocitySIN);
         signalRegistration (lwSIN);
         signalRegistration (laSIN);
+        signalRegistration (raSIN);
+        signalRegistration (velocitySIN);
         signalRegistration (lwSOUT);
-        signalRegistration (gripSOUT);
         signalRegistration (postureSIN);
         signalRegistration (forceSOUT);
 
@@ -76,8 +74,8 @@ namespace dynamicgraph
         xrat_2_.resize(3);	xrat_1_.setZero();
         xrat_2_.setZero();
         // longer hose (1.25 times longHose) = 11.34 -> 8.84 (MLJ), longest Hose (1.5 times longHose) = 13.64 -> 10.64 (MLJ)
-        double massHose = 13.197; //full hose: 9.04 -> 7.04 (massless joints MLJ), heavy = 13.56, light = 4.52 (50% fullHose), semi-light = 6.78 (75% of fullHose),  coiled hose: 13.197
-        double part = 0.22;   // 0.32 for longHose // 0.3 for heavy-longHose //Hold part % of the total weight of the Hose
+        double massHose = 7.04; //full hose: 9.04 -> 7.04 (massless joints MLJ), heavy = 13.56, light = 4.52 (50% fullHose), semi-light = 6.78 (75% of fullHose),  coiled hose: 13.197
+        double part = 0.28;   // 0.32 for longHose // 0.3 for heavy-longHose //Hold part % of the total weight of the Hose
         //for longer and longest Hose CAREFUL!!-holding weight in Z does not changes with length!!!
         double mu = 0.5;
         double gx = -9.8;
@@ -103,8 +101,8 @@ namespace dynamicgraph
 //        pos_ini_(2,0) = 0.371009;       pos_ini_(2,1) = 0.209073;       pos_ini_(2,2) = 0.904788;       pos_ini_(2,3) = 0.698064;
 //        pos_ini_(3,0) = 0;      pos_ini_(3,1) = 0;      pos_ini_(3,2) = 0;      pos_ini_(3,3) = 1;
 
-        iniTime_.tm_hour = 9;	iniTime_.tm_min = 10;	iniTime_.tm_sec = 0;
-        iniTime_.tm_year = 115;	iniTime_.tm_mon = 10;	iniTime_.tm_mday = 23;
+        iniTime_.tm_hour = 9;	iniTime_.tm_min = 50;	iniTime_.tm_sec = 0;
+        iniTime_.tm_year = 115;	iniTime_.tm_mon = 11;	iniTime_.tm_mday = 1;
         // year counted from 1900
 
         wrist_.open("/tmp/WristPos.txt", std::ios::out);
@@ -122,8 +120,6 @@ namespace dynamicgraph
         //= boost::bind(&ImpedanceController::computeControlOutput, this, _1, _2);
 
         lwSOUT.setFunction (boost::bind(&ImpedanceController::computeControlOutput, this, _1, _2));
-
-        gripSOUT.setFunction (boost::bind(&ImpedanceController::computeSelection, this, _1, _2));
 
         postureSOUT.setFunction (boost::bind(&ImpedanceController::computePosture, this, _1, _2));
 
@@ -226,16 +222,24 @@ namespace dynamicgraph
         const Vector& qs = postureSIN(inTime);
         const Vector& vel = velocitySIN(inTime);
         const double& dt = 0.005; //inTime - t_1_;
-        Vector xt, xg, imp, df, ftemp, xla, xra, fla, fra, fstatic, vla, vra, xcf;
+        Vector xt, xg, imp, df, ftemp, xla, xra, fla, fra, fstatic, vla, vra, xcf, xlw, xrot, xini;
         fla.resize(3);	fra.resize(3);	fstatic.resize(3);
         xt.resize(3);	 xg.resize(3);	fstatic.setZero();
         imp.resize(3);	 df.resize(3);
         ftemp.resize(3);	xla.resize(3);	xra.resize(3);	xcf.resize(3);	xcf.setZero();
         vla.resize(3);	vra.resize(3);	vla.setZero();	vra.setZero();
+        xlw.resize(3);  xlw.setZero();  xrot.resize(3); xrot.setZero();
+        xini.resize(3); xini.setZero();
         time_t myTime;
         time(&myTime);
         double realTime = difftime(myTime, mktime(&iniTime_));
 
+        MatrixRotation Ryaw, Rlw, Rrot;
+
+        la.extract(Ryaw);
+        pos_ini_.extract(xini);
+        Ryaw.multiply(xini, xrot);
+        
         if(!start_ || stop_ || hold_)
         {
           if(!init_)
@@ -244,11 +248,13 @@ namespace dynamicgraph
             dy_ = R(1, 3)-qs(1);
             lw_initial_ = R;
             for(unsigned i=0; i < 3; i++)
-             xreft_1_(i) = R(i, 3);
+              xreft_1_(i) = R(i, 3);
 
             init_ = true;
+            f_ini_ = fr;
             res_ << "----->>> dy = " << dy_ << std::endl;
             res_ << "===>>> lw ini = " << lw_initial_ << std::endl;
+            res_ << "===>>> fr ini = " << f_ini_ << std::endl;
           }
 
           for(unsigned i=0; i < 3; i++)
@@ -265,9 +271,10 @@ namespace dynamicgraph
 
           t_1_ = inTime;
           lw = pos_ini_;
-          lw(0,3) = qs(0)+pos_ini_(0,3);
-          lw(1,3) = qs(1)+pos_ini_(1,3);
+          lw(0,3) = qs(0)+xrot(0);
+          lw(1,3) = qs(1)+xrot(1);
           lw(2,3) = qs(2)-0.648703+pos_ini_(2,3);
+          f_ini_ = fr;
           // if(!start_ && !hold_)
           //lw_initial_ = R;
 
@@ -275,8 +282,8 @@ namespace dynamicgraph
           {
             //lw(0,3) = qs(0);
             lw = pos_ini_;
-            lw(0, 3) = (3*R(0,3) + (qs(0) +pos_ini_(0,3)) + xreft_1_(0))/5;
-            lw(1, 3) = ( (qs(1)+pos_ini_(1,3)) + 2*R(1,3))/3;
+            lw(0, 3) = (3*R(0,3) + (qs(0) +xrot(0)) + xreft_1_(0))/5;
+            lw(1, 3) = ( (qs(1)+xrot(1)) + 2*R(1,3))/3;
             lw(2, 3) = (3*R(2,3) + (qs(2)-0.648703+pos_ini_(2,3)) + xreft_1_(2))/5;
 
             res_ << "**" << inTime << "	" << lw << std::endl;
@@ -297,8 +304,8 @@ namespace dynamicgraph
           if(stop_)
           {
             lw = R;
-            lw(0,3) = ( (qs(0)+pos_ini_(0,3)) + 2*R(0,3) + xreft_1_(0))/4;
-            lw(1,3) = ( (qs(1)+pos_ini_(1,3)) + 2*R(1,3) + xreft_1_(1))/4;
+            lw(0,3) = ( (qs(0)+xrot(0)) + 2*R(0,3) + xreft_1_(0))/4;
+            lw(1,3) = ( (qs(1)+xrot(1)) + 2*R(1,3) + xreft_1_(1))/4;
             lw(2,3) = ( (qs(2)-0.648703+pos_ini_(2,3)) + 2*R(2,3) + xreft_1_(2))/4;
             res_ << "~~~~ stopped = " << inTime << "    " << lw << std::endl;
           }         
@@ -331,6 +338,24 @@ namespace dynamicgraph
             hold();
           }
 
+          ///Update desired force depending on distance to the reel
+         //----Experiment----------------------------------------------
+ /*         dist_ = xt(0) - pos_ini_(0,3);
+          double massHose = dist_*1.8;      //Real hose mass = 1.8 kg/m
+          fd_(0) = f_ini_(0) + (0.5 * massHose * (-9.8));
+          if(dist_ < 1.5)
+            fd_(2) = f_ini_(2) + (0.5 * massHose * (-9.8));
+          else
+            fd_(2) = f_ini_(2) + (1.8 * (-9.8));
+          //--------------------------------------------------
+
+          //---Simulation-------------------------------
+          //dist_ = (xt(0) - pos_ini_(0,3))+2.0;
+          massHose = dist_*1.8;       
+          fd_(0) = f_ini_(0) + (0.5 * (0.15 * massHose) * (-9.8));
+          fd_(2) = f_ini_(2) + (0.05 * massHose * (-9.8) );
+          //----------------------------------------------------
+//*/
           for(unsigned int i=0; i<3; i++)
           {
             vla(i) = ( xla(i) - xlat_1_(i) )/dt;
@@ -384,7 +409,10 @@ namespace dynamicgraph
 
           if( (xla(2) < 0.1051) && (xra(2) < 0.1051) && walk_ && !walkStop_)
           {
-            fstatic(0) = vel(0)*(20000);		//2700/0.1 for longHose
+            if(elapsed_ == 0)
+              vel_fix_ = vel(0);
+
+            fstatic(0) = vel_fix_*(27000);		//2700/0.1 for longHose
             //fstatic(2) = 100.0;
             if( (fla(0) > 250) || (fla(0) < -15) )		//Abrupt changes in xla or xra are little unwanted jumps in the feet
               fla(0) = 0.0;
@@ -456,7 +484,7 @@ namespace dynamicgraph
 
 
           //In Y, keep the distance at starting position with the waist, always!!
-          lw(1, 3) = qs(1) + dy_;
+          lw(1, 3) = qs(1) + xrot(1);  //dy_;
 
           force_ << (inTime*0.005) << "	" << inTime;
           for(unsigned k=0; k < 3; ++k)
@@ -488,21 +516,15 @@ namespace dynamicgraph
 
           if( lw(0,3) > (qs(0)+0.20) )
           {
-            /*if( (xla(2) > 0.1051) && (xreft_1_(0) >= xla(0)) )
-              lw(0,3) = xreft_1_(0) + (xla(0) - xlat_1_(0));
-            else if( xra(2) > 0.1051 && (xreft_1_(0) >= xra(0)) )
-              lw(0,3) = xreft_1_(0) + (xra(0) - xrat_1_(0));
-            else //*/
             lw(0,3) = qs(0) + sign*0.20;
-            
             res_ << "--> dx exceeding max limit!! changing to xt= " << lw(0,3) << std::endl;
           }
 
-          sign = fabs(lw(0,3) - xt(0))/(lw(0,3) - xt(0));
+          sign = fabs(lw(0,3) - xreft_1_(0))/(lw(0,3) - xreft_1_(0));
           if( (fabs(lw(0,3) - xreft_1_(0)) > max_dx_ ) && ((xla(2) >= 0.1052) || (xra(2) >= 0.1052)) )
           {
             lw(0,3) = xreft_1_(0) + sign*max_dx_;
-            res_ << "--> vx exceeding max limit when wlkg!! changing to xt= " << lw(0,3) << std::endl;
+            res_ << "--> vx exceeding max limit when wlkg!! changing to xt= " << lw(0,3) << ",    vel sign= " << sign << std::endl;
           }
           else if( walkStop_ && (fabs(lw(0,3) - xreft_1_(0)) > 2*max_dx_) )
           {
@@ -511,25 +533,42 @@ namespace dynamicgraph
           }
 
 
-     /*     if( (lw(0,3) < xla(0)) && (xla(2) < 0.1052) && (xra(2) < 0.1052) && walk_)
-          {
-            lw(0,3) = xla(0);
-            res_ << "==> dx smaller than xla while in DST!! changing to xt= " << lw(0,3) << std::endl;
-          } //*/
-
-          if( inTime > 10)
+          sign = fabs(lw(2,3) - xt(2))/(lw(2,3) - xt(2));
+          if( inTime > 1)
           {
             if( ((lw(2,3) < 0.695) || (lw(2,3) > 0.80)) && ((xla(2) >= 0.1052) || (xra(2) >= 0.01052) ))
             {
-              lw(2,3) = (xt_1_(2) + xt(2) + xreft_1_(2))/3;   //before was using x(t)
+              lw(2,3) = (xt(2) + 2*xreft_1_(2))/3;   
               res_ << "--> Z below 0.695 or over 0.730 while wkg, chaging z -> " << lw(2,3) << std::endl;
-            }  //*/
+            }  
             else if(((lw(2,3) < 0.65) || (lw(2,3) > 0.80)))
             {
-              lw(2,3) = (2*xt_1_(2) + xt(2) + lw(2,3))/4;
+              lw(2,3) = xreft_1_(2);
               res_ << "----> Z below 0.65 or over 0.80, changing z to previous value -> " << lw(2,3) << std::endl;
             }
           }
+
+          if( (fabs(lw(2,3) - xt(2)) > 0.0025) && ((xla(2) >= 0.1052) || (xra(2) >= 0.1052)) )
+          {
+            if( ((xreft_1_(2) + sign*0.0025) > 0.695) && ((xreft_1_(2) + sign*0.0025) < 0.80) )
+              lw(2,3) = xreft_1_(2) + sign*0.0025;
+            else if((xreft_1_(2) + sign*0.0025) < 0.695)
+              lw(2,3) = 0.695;
+            else
+              lw(2,3) = 0.80;
+            res_ << "--> vz exceeding max limit when wlkg!! changing to xt= " << lw(2,3) << ",    vel sign= " << sign << std::endl;
+          }
+          else if( (fabs(lw(2,3) - xt(2)) > 0.005) )
+          {
+            if( ((xreft_1_(2) + sign*0.005) > 0.65) && ((xreft_1_(2) + sign*0.005) < 0.80) )
+              lw(2,3) = xreft_1_(2) + sign*0.005;
+            else if((xreft_1_(2) + sign*0.0025) < 0.65)
+              lw(2,3) = 0.65;
+            else
+              lw(2,3) = 0.80;
+            res_ << "--> vz exceeding max limit!! changing to xt= " << lw(2,3) << ",    vel sign= " << sign << std::endl;
+          }
+
 
           wrist_ << inTime;
           for(unsigned k=0; k < 3; ++k)
@@ -549,39 +588,34 @@ namespace dynamicgraph
 
         if( start_ && ((fabs(fr(0)) < 2.0) && (fabs(fr(1)) < 2.0 )) && (fr(2) > -12.0) && (fr(2) < -10.0))
         {
-          lw(0,3) = ((qs(0)+pos_ini_(0,3)) + xreft_1_(0) + 3*xt(0))/5;
+          lw(0,3) = ((qs(0)+xrot(0)) + xreft_1_(0) + 3*xt(0))/5;
+          lw(1, 3) = qs(1) + xrot(1);
           lw(2,3) = (pos_ini_(2,3) + xreft_1_(2) + 3*xt(2))/5;
           res_ << "~~~~ " << inTime << ", fr = " << fr << std::endl;
           res_ << "~~~~ final = " << lw << std::endl;
         }
 
         t_1_ = inTime;
+
+        //Rotate as the waist yaw
+        la.extract(Ryaw);
+        lw.extract(xlw);
+        //pos_ini_.extract(xini);
+        pos_ini_.extract(Rlw);
+        //Ryaw.multiply(xini, xrot);
+        Ryaw.multiply(Rlw, Rrot);
+
+       // for(unsigned i=0; i < 3; i++)
+          //xlw(i) = xlw(i) - xrot(i);
+
+        //lw.buildFrom(Rrot, xrot);
+        lw.buildFrom(Rrot, xlw);
+
+
         for(unsigned i=0; i < 3; i++)
           xreft_1_(i) = lw(i,3);
 
         return lw;
-      }
-
-      Vector& ImpedanceController::computeSelection(Vector& selec, const int& inTime)
-      {
-        const Vector& force = forceSOUT.access(inTime);
-
-        if(!start_)
-        {
-          selec.resize(1);
-          selec(0) = false;
-        }
-        else
-        {
-          selec(0) = false;
-
-          for(unsigned i=0; i < 3; i++)
-          {
-            if( fabs( force(i) ) > 300.0)
-              selec(0) = true;
-          }
-        }
-        return selec;
       }
 
       Vector& ImpedanceController::computePosture(Vector& q, const int& inTime)

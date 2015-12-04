@@ -89,27 +89,22 @@ namespace dynamicgraph {
 
         SignalPtr < ::dynamicgraph::Vector, int> forceSIN;
         SignalPtr < ::dynamicgraph::Vector, int> postureSIN;
-        SignalPtr < ::dynamicgraph::Vector, int> velocitySIN;
-
-        SignalTimeDependent <MatrixHomogeneous, int > lwSOUT;
-
         SignalPtr <MatrixHomogeneous, int> lwSIN;
         SignalPtr <MatrixHomogeneous, int> laSIN;
         SignalPtr <MatrixHomogeneous, int> raSIN;
-        //SignalTimeDependent <MatrixHomogeneous, int> lwSIN;
+        SignalPtr < ::dynamicgraph::Vector, int> velocitySIN;
 
-
-        SignalTimeDependent < Vector, int> gripSOUT;
+        SignalTimeDependent <MatrixHomogeneous, int > lwSOUT;
         SignalTimeDependent <Vector, int> postureSOUT;
         SignalTimeDependent <Vector, int> forceSOUT;
 
         /// \brief Parameters of the Impedance controller
         double m_, c_;
         int mx_, cx_;
-        double dy_, max_dx_;
+        double dy_, max_dx_, dist_, vel_fix_;
         Vector xt_1_, q0_, xct_1_, xlat_1_, xlat_2_, xrat_1_, xrat_2_, xcft_1_, xcft_2_, xreft_1_;
         int t_1_, tf_1_, elapsed_;
-        Vector fd_, ff_1_, ff_2_, fraw_;
+        Vector fd_, f_ini_, ff_1_, ff_2_, fraw_;
         Vector fRt_1_, fRt_2_;
         MatrixHomogeneous lw_initial_, lwct_1_, pos_ini_;
 

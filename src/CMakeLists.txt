@@ -15,6 +15,8 @@ ADD_LIBRARY (${LIBRARY_NAME} SHARED
   seqplay.hh
   impController.cc
   impController.hh
+  walkTask.cc
+  walkTask.hh
   )
 
 PKG_CONFIG_USE_DEPENDENCY (${LIBRARY_NAME} sot-core)

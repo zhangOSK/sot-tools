@@ -19,6 +19,7 @@
 #include <iostream>
 #include <fstream>
 #include <time.h>
+#include <math.h>
 
 namespace dynamicgraph
 {
@@ -37,7 +38,7 @@ namespace dynamicgraph
         Entity(inName),
         waistSIN(0, "walkTask("+inName+")::input(MatrixHomo)::waistIN"),
         velocitySOUT(waistSIN, "walkTask("+inName+")::output(vector)::velocitydesOUT"),
-        gain_(0.20), A_(0.0), B_(0.0), C_(0.0), max_vel_(0.1), posDes_(), e_(0.0), e_dot_(0.0), t_1_(0), iniTime_(std::tm())
+        gain_(0.20), A_(0.0), B_(0.0), C_(0.0), eyt_1_(0.0), posDes_(), e_(0.0), e_dot_(0.0), t_1_(0), init_(false), iniTime_(std::tm())
       {
         // Register signals into the entity.
         signalRegistration (waistSIN);
@@ -49,11 +50,14 @@ namespace dynamicgraph
         posDes_(1) = 0.0;
         posDes_(2) = 0.0;
 
-        e_.resize(3);    e_dot_.resize(3);
-        e_.setZero();    e_dot_.setZero();
+        e_.resize(3);    e_dot_.resize(3);  max_vel_.resize(3); factor_.resize(3);
+        e_.setZero();    e_dot_.setZero();  max_vel_.setZero(); factor_.setZero();
+
+        max_vel_(0) = 0.1;  max_vel_(1) = 0.1;   max_vel_(2) = 0.08;
+        factor_(0) = 1.0;   factor_(1) = 20.0;   factor_(2) = 5.0;
 
         double mag = posDes_.norm();
-        gain_ = max_vel_/mag;
+        gain_ = max_vel_(0)/mag;
 
         iniTime_.tm_hour = 9;	iniTime_.tm_min = 50;	iniTime_.tm_sec = 0;
         iniTime_.tm_year = 115;	iniTime_.tm_mon = 11;	iniTime_.tm_mday = 1;
@@ -109,9 +113,9 @@ namespace dynamicgraph
       {
         const MatrixHomogeneous& Rwaist = waistSIN(inTime);
         MatrixRotation Rot, Rinv;
-        Vector pos, erot, g;
-        veldes.resize(3);   pos.resize(3);  erot.resize(3); g.resize(3);
-        veldes.setZero();   pos.setZero();  erot.setZero(); g.setZero();
+        Vector pos, erot;
+        veldes.resize(3);   pos.resize(3);  erot.resize(3);
+        veldes.setZero();   pos.setZero();  erot.setZero();
         Rwaist.extract(pos);
         Rwaist.extract(Rot);
         pos(2) = getYaw(Rwaist);
@@ -127,20 +131,28 @@ namespace dynamicgraph
         Rinv.multiply(erot, e_);
         e_(2) = erot(2);
 
-        double k = computeGain(); 
-        g(0) = k;   g(1) = 3*k;   g(2) = 2*k;
+        double g = computeGain(); 
         for(unsigned int i=0; i<3; i++)
         {
-          e_dot_(i) = -g(i) * e_(i);
-          if(fabs(e_(i)) < 0.001 || fabs(e_dot_(i) > 0.20) )
-            e_dot_(i) = 0.0;
-          vel_ << " " << e_dot_(i); // << " " << -g_e *erot(i);
+          if(i==1)
+            e_dot_(i) = -factor_(i)*g * e_(i) - factor_(i)*g * (0.005/2)*(e_(i) + eyt_1_); 
+          else
+            e_dot_(i) = -factor_(i)*g * e_(i);
 
-          veldes(i) = e_dot_(i);
+          if(fabs(e_(i)) < 0.001  || isnan(e_dot_(i)))
+            veldes(i) = 0.0;
+          else if(fabs(e_dot_(i)) > max_vel_(i))
+            veldes(i) = max_vel_(i) *(fabs(e_dot_(i))/e_dot_(i));
+          else
+            veldes(i) = e_dot_(i);
+
+          vel_ << " " << veldes(i);
+          pos_ << " " << e_(i);
         }
-               
+
+        eyt_1_ = e_(1);              
         pos_ << std::endl;
-        vel_ << "   " << k << std::endl;
+        vel_ << "   " << g << std::endl;
 
         return veldes;
       }

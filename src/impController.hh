@@ -102,7 +102,7 @@ namespace dynamicgraph {
         double m_, c_;
         int mx_, cx_;
         double dy_, max_dx_, dist_, vel_fix_;
-        Vector xt_1_, q0_, xct_1_, xlat_1_, xlat_2_, xrat_1_, xrat_2_, xcft_1_, xcft_2_, xreft_1_;
+        Vector xt_1_, xt_1_local_, q0_, xct_1_, xlat_1_, xlat_2_, xrat_1_, xrat_2_, xcft_1_, xcft_2_, xreft_1_;
         int t_1_, tf_1_, elapsed_;
         Vector fd_, f_ini_, ff_1_, ff_2_, fraw_;
         Vector fRt_1_, fRt_2_;

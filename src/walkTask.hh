@@ -52,17 +52,23 @@ namespace dynamicgraph {
 
         void setAdaptiveGain (const double& inmaxGain)
         {
-          A_ = inmaxGain;
-          C_ = 0.0;
-          double p = max_vel_/inmaxGain;  // Max velocity allowed = gain*error, when error = 1, vel = gain
+          C_ = 0.15;
+          A_ = inmaxGain - C_;
+          double p = (1.0 - C_)/A_;  // Set gain = 1 for e = max_vel_
           if (A_ == 0)    
             B_ = 0;
           else
-            B_ = (-1)*log( p );
+            B_ = (-1/max_vel_(0))*log( p );
+        
+          factor_(1) = 1.0;
+          factor_(2) = 1.0;
         }
 
-        void setGoalPosition (const Vector& inPos) {
+        void setGoalPosition (const Vector& inPos)
+        {
           posDes_ = inPos;
+          double mag = posDes_.norm();
+          gain_ = max_vel_(0)/mag;
         }
 
       protected:
@@ -79,9 +85,10 @@ namespace dynamicgraph {
         SignalTimeDependent < ::dynamicgraph::Vector, int > velocitySOUT;
 
         ///
-        double gain_, A_, B_, C_, max_vel_;
-        Vector posDes_, e_, e_dot_;
+        double gain_, A_, B_, C_, eyt_1_, rms_;
+        Vector posDes_, e_, e_dot_, max_vel_, factor_;
         int t_1_;
+        bool init_;
 
         // Temporary variables for internal computations
         std::ofstream pos_, vel_;

@@ -75,13 +75,13 @@ namespace dynamicgraph
         xrat_2_.setZero();
         // longer hose (1.25 times longHose) = 11.34 -> 8.84 (MLJ), longest Hose (1.5 times longHose) = 13.64 -> 10.64 (MLJ)
         double massHose = 7.04; //full hose: 9.04 -> 7.04 (massless joints MLJ), heavy = 13.56, light = 4.52 (50% fullHose), semi-light = 6.78 (75% of fullHose),  coiled hose: 13.197
-        double part = 0.32;   // 0.32 for longHose // 0.3 for heavy-longHose //Hold part % of the total weight of the Hose
+        //double part = 0.32;   // 0.32 for longHose // 0.3 for heavy-longHose //Hold part % of the total weight of the Hose
         //for longer and longest Hose CAREFUL!!-holding weight in Z does not changes with length!!!
-        double mu = 0.5;
-        double gx = -9.8;
-        fd_(0) = mu * (0.15 * massHose) * gx;
+       // double mu = 0.5;
+       // double gx = -9.8;
+        fd_(0) = 15.0;   //mu * (0.15 * massHose) * gx;
         fd_(1) = 0.0;
-        fd_(2) = (part * massHose * gx) - 11.0;   //Sensor offset = -11.0
+        fd_(2) = -18.0;   //(part * massHose * gx) - 11.0;   //Sensor offset = -11.0
 
 //        WAIST
 //        1	-7.03457e-10	6.28389e-06	2.0636e-06
@@ -454,7 +454,7 @@ namespace dynamicgraph
           pos_ << "	" << df(0) << "	" << df(1) << "	" << df(2);
           pos_ << "	" << realTime << std::endl;
 
-          double sign = fabs(vel(0))/ vel(0);
+          double sign = fabs(lw(0,3) - xreft_1_(0)) / (lw(0,3) - xreft_1_(0));     //fabs(vel(0))/ vel(0);
           if (sign == 0.0)
             sign = 1.0;
 
@@ -466,7 +466,7 @@ namespace dynamicgraph
           if( lw(0,3) > (qs(0)+dy_rot(0)) )
           {
             lw(0,3) = qs(0) + sign*(dy_rot(0));
-            res_ << "--> dx exceeding max limit!! changing to xt= " << lw(0,3) << ", 0.20 rot = " << dy_rot << std::endl;
+            res_ << "--> dx exceeding max limit!! changing to xt= " << lw(0,3) << ", 0.18 rot = " << dy_rot << std::endl;
           }
 
           sign = fabs(lw(0,3) - xreft_1_(0))/(lw(0,3) - xreft_1_(0));

@@ -71,6 +71,11 @@ namespace dynamicgraph {
           gain_ = max_vel_(0)/mag;
         }
 
+        void setErrorTolerance (const Vector& inTolerance)
+        {
+          tolerance_ = inTolerance;
+        }
+
       protected:
 
 
@@ -86,7 +91,7 @@ namespace dynamicgraph {
 
         ///
         double gain_, A_, B_, C_, eyt_1_, rms_;
-        Vector posDes_, e_, e_dot_, max_vel_, factor_;
+        Vector posDes_, e_, e_dot_, max_vel_, factor_, tolerance_, endVel_;
         int t_1_;
         bool init_;
 

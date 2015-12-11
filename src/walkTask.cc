@@ -46,15 +46,17 @@ namespace dynamicgraph
 
         posDes_.resize(3);
         posDes_.setZero();
-        posDes_(0) = 1.5;
+        posDes_(0) = 0.0;
         posDes_(1) = 0.0;
         posDes_(2) = 0.0;
 
-        e_.resize(3);    e_dot_.resize(3);  max_vel_.resize(3); factor_.resize(3);
-        e_.setZero();    e_dot_.setZero();  max_vel_.setZero(); factor_.setZero();
+        e_.resize(3);    e_dot_.resize(3);  max_vel_.resize(3); factor_.resize(3);  tolerance_.resize(3);   endVel_.resize(3);
+        e_.setZero();    e_dot_.setZero();  max_vel_.setZero(); factor_.setZero();  tolerance_.setZero();   endVel_.setZero();
 
         max_vel_(0) = 0.1;  max_vel_(1) = 0.1;   max_vel_(2) = 0.08;
         factor_(0) = 1.0;   factor_(1) = 20.0;   factor_(2) = 5.0;
+        tolerance_(0) = 0.05;   tolerance_(1) = 0.05;   tolerance_(2) = 0.09; // aprox. 5 deg
+        endVel_(0) = 0.0001;    endVel_(1) = 0.0;   endVel_(2) = 0.0;
 
         double mag = posDes_.norm();
         gain_ = max_vel_(0)/mag;
@@ -101,6 +103,17 @@ namespace dynamicgraph
                    new ::dynamicgraph::command::Setter<walkTask, Vector>
                    (*this, &walkTask::setGoalPosition, docstring));
 
+        // setErrorTolerance
+        docstring =
+            "\n"
+            "    Set the Error Tolerance for the Walking Task\n"
+            "      takes a tuple of 3 floating point numbers as input\n"
+            "\n";
+        addCommand(std::string("setErrorTolerance"),
+                   new ::dynamicgraph::command::Setter<walkTask, Vector>
+                   (*this, &walkTask::setErrorTolerance, docstring));
+
+
       }
 
       walkTask::~walkTask()
@@ -139,8 +152,8 @@ namespace dynamicgraph
           else
             e_dot_(i) = -factor_(i)*g * e_(i);
 
-          if(fabs(e_(i)) < 0.001  || isnan(e_dot_(i)))
-            veldes(i) = 0.0;
+          if(fabs(e_(i)) < tolerance_(i)  || isnan(e_dot_(i)))
+            veldes(i) = endVel_(i);
           else if(fabs(e_dot_(i)) > max_vel_(i))
             veldes(i) = max_vel_(i) *(fabs(e_dot_(i))/e_dot_(i));
           else

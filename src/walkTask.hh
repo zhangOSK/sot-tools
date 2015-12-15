@@ -60,8 +60,8 @@ namespace dynamicgraph {
           else
             B_ = (-1/max_vel_(0))*log( p );
         
-          factor_(1) = 1.0;
-          factor_(2) = 1.0;
+          factor_(1) = 2.0;
+          factor_(2) = 2.0;
         }
 
         void setGoalPosition (const Vector& inPos)

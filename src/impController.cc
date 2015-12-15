@@ -75,13 +75,13 @@ namespace dynamicgraph
         xrat_2_.setZero();
         // longer hose (1.25 times longHose) = 11.34 -> 8.84 (MLJ), longest Hose (1.5 times longHose) = 13.64 -> 10.64 (MLJ)
         double massHose = 7.04; //full hose: 9.04 -> 7.04 (massless joints MLJ), heavy = 13.56, light = 4.52 (50% fullHose), semi-light = 6.78 (75% of fullHose),  coiled hose: 13.197
-        //double part = 0.32;   // 0.32 for longHose // 0.3 for heavy-longHose //Hold part % of the total weight of the Hose
+        double part = 0.32;   // 0.32 for longHose // 0.3 for heavy-longHose //Hold part % of the total weight of the Hose
         //for longer and longest Hose CAREFUL!!-holding weight in Z does not changes with length!!!
-       // double mu = 0.5;
-       // double gx = -9.8;
-        fd_(0) = 15.0;   //mu * (0.15 * massHose) * gx;
+        double mu = 0.5;
+        double gx = -9.8;
+        fd_(0) = mu * (0.15 * massHose) * gx;
         fd_(1) = 0.0;
-        fd_(2) = -18.0;   //(part * massHose * gx) - 11.0;   //Sensor offset = -11.0
+        fd_(2) = (part * massHose * gx) - 11.0;   //Sensor offset = -11.0
 
 //        WAIST
 //        1	-7.03457e-10	6.28389e-06	2.0636e-06
@@ -101,8 +101,8 @@ namespace dynamicgraph
 //        pos_ini_(2,0) = 0.371009;       pos_ini_(2,1) = 0.209073;       pos_ini_(2,2) = 0.904788;       pos_ini_(2,3) = 0.698064;
 //        pos_ini_(3,0) = 0;      pos_ini_(3,1) = 0;      pos_ini_(3,2) = 0;      pos_ini_(3,3) = 1;
 
-        iniTime_.tm_hour = 9;	iniTime_.tm_min = 50;	iniTime_.tm_sec = 0;
-        iniTime_.tm_year = 115;	iniTime_.tm_mon = 11;	iniTime_.tm_mday = 1;
+        iniTime_.tm_hour = 10;	iniTime_.tm_min = 30;	iniTime_.tm_sec = 0;
+        iniTime_.tm_year = 115;	iniTime_.tm_mon = 11;	iniTime_.tm_mday = 15;
         // year counted from 1900
 
         wrist_.open("/tmp/WristPos.txt", std::ios::out);
@@ -282,9 +282,9 @@ namespace dynamicgraph
           if(hold_)
           {
             lw = pos_ini_;
-            lw(0, 3) = (3*R(0,3) + (qs(0) +xrot(0)) + xreft_1_(0))/5;
-            lw(1, 3) = ( (qs(1)+xrot(1)) + 2*R(1,3))/3;
-            lw(2, 3) = (3*R(2,3) + (qs(2)-0.648703+pos_ini_(2,3)) + xreft_1_(2))/5;
+            lw(0, 3) = (R(0,3) + (qs(0) +xrot(0)) + xreft_1_(0))/3;
+            lw(1, 3) = qs(1)+xrot(1);
+            lw(2, 3) = (12*R(2,3) + (qs(2)-0.648703+pos_ini_(2,3)) + 12*xreft_1_(2))/25;
 
             res_ << "**" << inTime << "	" << lw << std::endl;
             wrist_ << inTime;
@@ -304,9 +304,9 @@ namespace dynamicgraph
           if(stop_)
           {
             lw = R;
-            lw(0,3) = ( (qs(0)+xrot(0)) + 3*R(0,3) + xreft_1_(0))/5;
-            lw(1,3) = ( (qs(1)+xrot(1)) + 3*R(1,3) + xreft_1_(1))/5;
-            lw(2,3) = ( (qs(2)-0.648703+pos_ini_(2,3)) + 3*R(2,3) + xreft_1_(2))/5;
+            lw(0,3) = ( (qs(0)+xrot(0)) + R(0,3) + xreft_1_(0))/3;
+            lw(1,3) = qs(1)+xrot(1);
+            lw(2,3) = ( (qs(2)-0.648703+pos_ini_(2,3)) + 12*R(2,3) + 12*xreft_1_(2))/25;
             res_ << "~~~~ stopped = " << inTime << "    " << lw << std::endl;
           }         
 
@@ -454,10 +454,6 @@ namespace dynamicgraph
           pos_ << "	" << df(0) << "	" << df(1) << "	" << df(2);
           pos_ << "	" << realTime << std::endl;
 
-          double sign = fabs(lw(0,3) - xreft_1_(0)) / (lw(0,3) - xreft_1_(0));     //fabs(vel(0))/ vel(0);
-          if (sign == 0.0)
-            sign = 1.0;
-
           Vector dy_rot;
           xini.setZero();   dy_rot.resize(3);   dy_rot.setZero();
           xini(0) = 0.18;   xini(1) = pos_ini_(1, 3);
@@ -465,11 +461,11 @@ namespace dynamicgraph
 
           if( lw(0,3) > (qs(0)+dy_rot(0)) )
           {
-            lw(0,3) = qs(0) + sign*(dy_rot(0));
+            lw(0,3) = qs(0) + dy_rot(0);
             res_ << "--> dx exceeding max limit!! changing to xt= " << lw(0,3) << ", 0.18 rot = " << dy_rot << std::endl;
           }
 
-          sign = fabs(lw(0,3) - xreft_1_(0))/(lw(0,3) - xreft_1_(0));
+          double sign = fabs(lw(0,3) - xreft_1_(0))/(lw(0,3) - xreft_1_(0));
           if( (fabs(lw(0,3) - xreft_1_(0)) > max_dx_ ) && ((xla(2) >= 0.1052) || (xra(2) >= 0.1052)) )
           {
             lw(0,3) = xreft_1_(0) + sign*max_dx_;
@@ -532,7 +528,7 @@ namespace dynamicgraph
             wrist_ << "	" << xt(k) << "	" << lw(k, 3) << "	" << xcf_world(k);
 
           wrist_ << "	" << xla(0) << "	" << xra(0) << "	" << xla(1) << "	" << xra(1);
-          wrist_ << "	" << xla(2) << "	" << xra(2) << "	" << xg(0) << "	" << xg(2) << "	" << realTime << std::endl;
+          wrist_ << "	" << xla(2) << "	" << xra(2) << "	" << qs(0)+xrot(0) << "	" << qs(1)+xrot(1) << "	" << realTime << std::endl;
 
           lwct_1_ = lw;
           xlat_2_ = xlat_1_;
@@ -549,9 +545,9 @@ namespace dynamicgraph
           pos_ini_.extract(xini);
           xrot.setZero();
           Ryaw.multiply(xini, xrot);
-          lw(0,3) = ((qs(0)+xrot(0)) + xreft_1_(0) + 3*R(0,3))/5;
+          lw(0,3) = ((qs(0)+xrot(0)) + xreft_1_(0) + R(0,3))/3;
           lw(1,3) = qs(1) + xrot(1);
-          lw(2,3) = ((qs(2)-0.648703+pos_ini_(2,3)) + xreft_1_(2) + 3*R(2,3))/5;
+          lw(2,3) = ((qs(2)-0.648703+pos_ini_(2,3)) + 12*xreft_1_(2) + 12*R(2,3))/25;
           res_ << "~~~~ " << inTime << ", fr = " << fr << ",    xref = " << xreft_1_ << std::endl;
           res_ << "~~~~ final = " << lw << std::endl;
         }

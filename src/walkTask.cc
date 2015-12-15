@@ -53,7 +53,7 @@ namespace dynamicgraph
         e_.resize(3);    e_dot_.resize(3);  max_vel_.resize(3); factor_.resize(3);  tolerance_.resize(3);   endVel_.resize(3);
         e_.setZero();    e_dot_.setZero();  max_vel_.setZero(); factor_.setZero();  tolerance_.setZero();   endVel_.setZero();
 
-        max_vel_(0) = 0.1;  max_vel_(1) = 0.1;   max_vel_(2) = 0.08;
+        max_vel_(0) = 0.1;  max_vel_(1) = 0.15;   max_vel_(2) = 0.08;
         factor_(0) = 1.0;   factor_(1) = 20.0;   factor_(2) = 5.0;
         tolerance_(0) = 0.05;   tolerance_(1) = 0.05;   tolerance_(2) = 0.09; // aprox. 5 deg
         endVel_(0) = 0.0001;    endVel_(1) = 0.0;   endVel_(2) = 0.0;
@@ -156,6 +156,8 @@ namespace dynamicgraph
             veldes(i) = endVel_(i);
           else if(fabs(e_dot_(i)) > max_vel_(i))
             veldes(i) = max_vel_(i) *(fabs(e_dot_(i))/e_dot_(i));
+          else if(fabs(e_dot_(i)) < 0.01)
+            veldes(i) = 0.01 *(fabs(e_dot_(i))/e_dot_(i));
           else
             veldes(i) = e_dot_(i);
 

@@ -44,7 +44,7 @@ namespace dynamicgraph
         lwSOUT(forceSIN << lwSIN << laSIN, "ImpedanceController("+inName+")::output(MatrixHomo)::leftWristOUT"),
         postureSOUT(forceSIN << postureSIN, "ImpedanceController("+inName+")::output(vector)::postureOUT"),
         forceSOUT(forceSIN << lwSIN, "ImpedanceController("+inName+")::output(vector)::leftWristForce"),
-        m_(1.00), c_(5.0), mx_(20), cx_(100), max_dx_(0.0025), dist_(0.0), vel_fix_(0.0), t_1_(0), tf_1_(0), elapsed_(0),
+        m_(1.00), c_(5.0), mx_(20), cx_(100), max_dx_(0.005), dist_(0.0), vel_fix_(0.0), t_1_(0), tf_1_(0), elapsed_(0),
         start_(false), stop_(false), hold_(false), init_(false), walk_(false), walkStop_(false), open_(false), close_(false), iniTime_(std::tm())
       {
         // Register signals into the entity.
@@ -73,13 +73,14 @@ namespace dynamicgraph
         xlat_2_.setZero();	xrat_1_.resize(3);
         xrat_2_.resize(3);	xrat_1_.setZero();
         xrat_2_.setZero();
+        xreft_1_local_.resize(3);   xreft_1_local_.setZero();
         // longer hose (1.25 times longHose) = 11.34 -> 8.84 (MLJ), longest Hose (1.5 times longHose) = 13.64 -> 10.64 (MLJ)
         double massHose = 7.04; //full hose: 9.04 -> 7.04 (massless joints MLJ), heavy = 13.56, light = 4.52 (50% fullHose), semi-light = 6.78 (75% of fullHose),  coiled hose: 13.197
         double part = 0.32;   // 0.32 for longHose // 0.3 for heavy-longHose //Hold part % of the total weight of the Hose
         //for longer and longest Hose CAREFUL!!-holding weight in Z does not changes with length!!!
         double mu = 0.5;
         double gx = -9.8;
-        fd_(0) = mu * (0.15 * massHose) * gx;
+        fd_(0) = mu * (0.4 * massHose) * gx;
         fd_(1) = 0.0;
         fd_(2) = (part * massHose * gx) - 11.0;   //Sensor offset = -11.0
 
@@ -282,8 +283,8 @@ namespace dynamicgraph
           if(hold_)
           {
             lw = pos_ini_;
-            lw(0, 3) = (R(0,3) + (qs(0) +xrot(0)) + xreft_1_(0))/3;
-            lw(1, 3) = qs(1)+xrot(1);
+            lw(0, 3) = (2*R(0,3) + (qs(0) +xrot(0)) + 2*xreft_1_(0))/5;
+            lw(1, 3) = ( (qs(1)+xrot(1)) + 2*R(1,3) + 2*xreft_1_(1))/5;
             lw(2, 3) = (12*R(2,3) + (qs(2)-0.648703+pos_ini_(2,3)) + 12*xreft_1_(2))/25;
 
             res_ << "**" << inTime << "	" << lw << std::endl;
@@ -304,12 +305,14 @@ namespace dynamicgraph
           if(stop_)
           {
             lw = R;
-            lw(0,3) = ( (qs(0)+xrot(0)) + R(0,3) + xreft_1_(0))/3;
-            lw(1,3) = qs(1)+xrot(1);
+            lw(0,3) = ( (qs(0)+xrot(0)) + 2*R(0,3) + 2*xreft_1_(0))/5;
+            lw(1,3) = ( (qs(1)+xrot(1)) + 2*R(1,3) + 2*xreft_1_(1))/5;
             lw(2,3) = ( (qs(2)-0.648703+pos_ini_(2,3)) + 12*R(2,3) + 12*xreft_1_(2))/25;
             res_ << "~~~~ stopped = " << inTime << "    " << lw << std::endl;
-          }         
+          }  
 
+          lw.extract(xlw);
+          Rinv.multiply(xlw, xreft_1_local_);       
         }
         else if (start_)
         {
@@ -384,7 +387,7 @@ namespace dynamicgraph
             if(elapsed_ == 0)
               vel_fix_ = vel(0);
 
-            fstatic(0) = vel_fix_*(25000);		//2700
+            fstatic(0) = vel_fix_*(27000);		//2700
             elapsed_ = elapsed_ + 1;
           }
           else
@@ -413,9 +416,78 @@ namespace dynamicgraph
             xcft_1_(i) = xcf(i);
           }
 
+          Vector xd_local;
+          xd_local.resize(3);   xd_local.setZero();
+    
+          for(unsigned i=0; i < 3; i++)
+            xd_local(i) = (xcf(i) + xreft_1_local_(i) + xt_local(i))/3;
+
           //In Y, keep the distance at starting position with the waist, always!!
-          xcf(1) = dy_ + xw_local(1);
-          Ryaw.multiply(xcf, xcf_world);
+          xd_local(1) = dy_ + xw_local(1); 
+
+          //Check limits on the local (waist) frame
+          if( xd_local(0) > (xw_local(0) + 0.20) )
+          {
+            res_ << inTime << "	" << "--> dx exceeding max limit!! changing from: " << xd_local(0) << " to xt = " << xw_local(0) + 0.20 << std::endl;
+            xd_local(0) = xw_local(0) + 0.20;
+          }
+
+          double sign = fabs(xd_local(0) - xreft_1_local_(0))/(xd_local(0) - xreft_1_local_(0));
+          if( (fabs(xd_local(0) - xreft_1_local_(0)) > max_dx_ ) && ((xla(2) >= 0.1052) || (xra(2) >= 0.1052)) )
+          {
+            res_ << inTime << "	" << "--> vx exceeding max limit when wlkg!! changing from: " << xd_local(0) << " to xt = " << xreft_1_local_(0) + sign*max_dx_ << ",    vel sign= " << sign << std::endl;
+            xd_local(0) = xreft_1_local_(0) + sign*max_dx_;
+          }
+          else if( walkStop_ && (fabs(xd_local(0) - xreft_1_local_(0)) > 2*max_dx_) )
+          {
+            res_ << inTime << "	" << "--> vx exceeding max limit!! changing from: " << xd_local(0) << " to xt = " << xreft_1_local_(0) + sign*2*max_dx_ << ",    vel sign= " << sign << std::endl;
+            xd_local(0) = xreft_1_local_(0) + sign*2*max_dx_;
+          }  
+
+          double z;
+          if(xt_local(2) > xreft_1_local_(2))
+            z = xt_local(2);
+          else
+            z = xreft_1_local_(2);
+
+          sign = fabs(xd_local(2) - z)/(xd_local(2) - z);
+          if( inTime > 1)
+          {
+            if( ((xd_local(2) < 0.695) || (xd_local(2) > 0.80)) && ((xla(2) >= 0.1052) || (xra(2) >= 0.01052) ))
+            {
+              xd_local(2) = (xt(2) + 2*xreft_1_local_(2))/3;   
+              res_ << "--> Z below 0.695 or over 0.730 while wkg, chaging z -> " << xd_local(2) << std::endl;
+            }  
+            else if(((xd_local(2) < 0.65) || (xd_local(2) > 0.80)))
+            {
+              xd_local(2) = xreft_1_local_(2);
+              res_ << "----> Z below 0.65 or over 0.80, changing z to previous value -> " << xd_local(2) << std::endl;
+            }
+          }
+                                    // max dz
+          if( (fabs(xd_local(2) - z) > 0.0015) &&  walk_)
+          {
+            if( ((z + sign*0.0015) > 0.695) && ((z + sign*0.0015) < 0.80) )
+              xd_local(2) = z + sign*0.0015;
+            else if((z + sign*0.0015) < 0.695)
+              xd_local(2) = 0.695;
+            else
+              xd_local(2) = 0.80;
+            res_ << "--> vz exceeding max limit when wlkg!! changing to xt= " << xd_local(2) << ",    vel sign= " << sign << std::endl;
+          }
+          else if( (fabs(xd_local(2) - z) > 0.003) )
+          {
+            if( ((z + sign*0.003) > 0.65) && ((z + sign*0.003) < 0.80) )
+              xd_local(2) = z + sign*0.003;
+            else if((z + sign*0.0015) < 0.65)
+              xd_local(2) = 0.65;
+            else
+              xd_local(2) = 0.80;
+            res_ << "--> vz exceeding max limit!! changing to xt= " << xd_local(2) << ",    vel sign= " << sign << std::endl;
+          }
+
+          //Go back to the world frame
+          Ryaw.multiply(xd_local, xcf_world);
 
           for(unsigned i=0; i < 3; i++)
             imp(i) = ((m_ / (dt * dt) ) * (xg(i) - (2*xt_local(i)) + xt_1_local_(i) )) + ( (c_/dt) * (xt_local(i) - xt_1_local_(i)) );
@@ -423,12 +495,10 @@ namespace dynamicgraph
           df = fd_ - fstatic;     
                
           for(unsigned i=0; i < 3; i++)
-            lw(i, 3) = ( xcf_world(i) + xreft_1_(i) + xt(i) )/3;
+            lw(i, 3) =  xcf_world(i);       // + xreft_1_(i) )/2;        // + xt(i) )/3;
 
           pos_ini_.extract(xini);
           Ryaw.multiply(xini, xrot);         
-          //In Y, keep the distance at starting position with the waist, always!!
-          lw(1, 3) = qs(1) + xrot(1);
 
           force_ << (inTime*0.005) << "	" << inTime;
           for(unsigned k=0; k < 3; ++k)
@@ -454,81 +524,16 @@ namespace dynamicgraph
           pos_ << "	" << df(0) << "	" << df(1) << "	" << df(2);
           pos_ << "	" << realTime << std::endl;
 
-          Vector dy_rot;
-          xini.setZero();   dy_rot.resize(3);   dy_rot.setZero();
-          xini(0) = 0.18;   xini(1) = pos_ini_(1, 3);
-          Ryaw.multiply(xini, dy_rot);
-
-          if( lw(0,3) > (qs(0)+dy_rot(0)) )
-          {
-            lw(0,3) = qs(0) + dy_rot(0);
-            res_ << "--> dx exceeding max limit!! changing to xt= " << lw(0,3) << ", 0.18 rot = " << dy_rot << std::endl;
-          }
-
-          double sign = fabs(lw(0,3) - xreft_1_(0))/(lw(0,3) - xreft_1_(0));
-          if( (fabs(lw(0,3) - xreft_1_(0)) > max_dx_ ) && ((xla(2) >= 0.1052) || (xra(2) >= 0.1052)) )
-          {
-            lw(0,3) = xreft_1_(0) + sign*max_dx_;
-            res_ << "--> vx exceeding max limit when wlkg!! changing to xt= " << lw(0,3) << ",    vel sign= " << sign << std::endl;
-          }
-          else if( walkStop_ && (fabs(lw(0,3) - xreft_1_(0)) > 2*max_dx_) )
-          {
-            lw(0,3) = xreft_1_(0) + sign*2*max_dx_;
-            res_ << "--> vx exceeding max limit!! changing to xt= " << lw(0,3) << ",    vel sign= " << sign << std::endl;
-          }
-
-          double z;
-          if(xt(2) > xreft_1_(2))
-            z = xt(2);
-          else
-            z = xreft_1_(2);
-
-          sign = fabs(lw(2,3) - z)/(lw(2,3) - z);
-          if( inTime > 1)
-          {
-            if( ((lw(2,3) < 0.695) || (lw(2,3) > 0.80)) && ((xla(2) >= 0.1052) || (xra(2) >= 0.01052) ))
-            {
-              lw(2,3) = (xt(2) + 2*xreft_1_(2))/3;   
-              res_ << "--> Z below 0.695 or over 0.730 while wkg, chaging z -> " << lw(2,3) << std::endl;
-            }  
-            else if(((lw(2,3) < 0.65) || (lw(2,3) > 0.80)))
-            {
-              lw(2,3) = xreft_1_(2);
-              res_ << "----> Z below 0.65 or over 0.80, changing z to previous value -> " << lw(2,3) << std::endl;
-            }
-          }
-                                    // max dz
-          if( (fabs(lw(2,3) - z) > 0.0015) &&  walk_)
-          {
-            if( ((z + sign*0.0015) > 0.695) && ((z + sign*0.0015) < 0.80) )
-              lw(2,3) = z + sign*0.0015;
-            else if((z + sign*0.0015) < 0.695)
-              lw(2,3) = 0.695;
-            else
-              lw(2,3) = 0.80;
-            res_ << "--> vz exceeding max limit when wlkg!! changing to xt= " << lw(2,3) << ",    vel sign= " << sign << std::endl;
-          }
-          else if( (fabs(lw(2,3) - z) > 0.003) )
-          {
-            if( ((z + sign*0.003) > 0.65) && ((z + sign*0.003) < 0.80) )
-              lw(2,3) = z + sign*0.003;
-            else if((z + sign*0.0015) < 0.65)
-              lw(2,3) = 0.65;
-            else
-              lw(2,3) = 0.80;
-            res_ << "--> vz exceeding max limit!! changing to xt= " << lw(2,3) << ",    vel sign= " << sign << std::endl;
-          }
-
           pos_ini_.extract(xini);
           xrot.setZero();
           Ryaw.multiply(xini, xrot);
 
           wrist_ << inTime;
           for(unsigned k=0; k < 3; ++k)
-            wrist_ << "	" << xt(k) << "	" << lw(k, 3) << "	" << xcf_world(k);
+            wrist_ << "	" << xt(k) << "	" << lw(k, 3) << "	" << xt_local(k);   //xcf_world(k);
 
-          wrist_ << "	" << xla(0) << "	" << xra(0) << "	" << xla(1) << "	" << xra(1);
-          wrist_ << "	" << xla(2) << "	" << xra(2) << "	" << qs(0)+xrot(0) << "	" << qs(1)+xrot(1) << "	" << realTime << std::endl;
+          wrist_ << "	" << xla(0) << "	" << xg(0) << "	" << xla(1) << "	" << xd_local(1);
+          wrist_ << "	" << xla(2) << "	" << xg(2) << "	" << qs(0)+xrot(0) << "	" << qs(1)+xrot(1) << "	" << realTime << std::endl;
 
           lwct_1_ = lw;
           xlat_2_ = xlat_1_;
@@ -538,6 +543,7 @@ namespace dynamicgraph
 
           xt_1_ = xt;
           xt_1_local_ = xt_local;
+          xreft_1_local_ = xd_local;
         }
 
         if( start_ && ((fabs(fr(0)) < 2.0) && (fabs(fr(1)) < 2.0 )) && (fr(2) > -12.0) && (fr(2) < -10.0))
@@ -546,7 +552,7 @@ namespace dynamicgraph
           xrot.setZero();
           Ryaw.multiply(xini, xrot);
           lw(0,3) = ((qs(0)+xrot(0)) + xreft_1_(0) + R(0,3))/3;
-          lw(1,3) = qs(1) + xrot(1);
+          lw(1,3) = ((qs(1) + xrot(1)) + xreft_1_(1) + R(1,3))/3;
           lw(2,3) = ((qs(2)-0.648703+pos_ini_(2,3)) + 12*xreft_1_(2) + 12*R(2,3))/25;
           res_ << "~~~~ " << inTime << ", fr = " << fr << ",    xref = " << xreft_1_ << std::endl;
           res_ << "~~~~ final = " << lw << std::endl;
@@ -562,7 +568,8 @@ namespace dynamicgraph
         lw.buildFrom(Rrot, xlw);
 
         lw.extract(xreft_1_);
-
+        //Rinv.multiply(xlw, xreft_1_local_);
+        res_ << inTime << "	" << "++++++ ref local = " << xreft_1_local_ << std::endl;
 
         return lw;
       }

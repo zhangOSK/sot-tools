@@ -152,11 +152,11 @@ namespace dynamicgraph
           else
             e_dot_(i) = -factor_(i)*g * e_(i);
 
-          if(fabs(e_(i)) < tolerance_(i)  || isnan(e_dot_(i)))
+          if( ( (fabs(e_(i)) < tolerance_(i)) && (e_.norm() < 0.12) ) || isnan(e_dot_(i)))
             veldes(i) = endVel_(i);
           else if(fabs(e_dot_(i)) > max_vel_(i))
             veldes(i) = max_vel_(i) *(fabs(e_dot_(i))/e_dot_(i));
-          else if(fabs(e_dot_(i)) < 0.01)
+          else if( fabs(e_dot_(i)) < 0.01)
             veldes(i) = 0.01 *(fabs(e_dot_(i))/e_dot_(i));
           else
             veldes(i) = e_dot_(i);

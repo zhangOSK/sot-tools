@@ -283,9 +283,9 @@ namespace dynamicgraph
           if(hold_)
           {
             lw = pos_ini_;
-            lw(0, 3) = (2*R(0,3) + (qs(0) +xrot(0)) + 2*xreft_1_(0))/5;
-            lw(1, 3) = ( (qs(1)+xrot(1)) + 2*R(1,3) + 2*xreft_1_(1))/5;
-            lw(2, 3) = (12*R(2,3) + (qs(2)-0.648703+pos_ini_(2,3)) + 12*xreft_1_(2))/25;
+            lw(0, 3) = (3*R(0,3) + (qs(0) +xrot(0)) + 2*xreft_1_(0))/6;
+            lw(1, 3) = ( (qs(1)+xrot(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
+            lw(2, 3) = (3*R(2,3) + (qs(2)-0.648703+pos_ini_(2,3)) + 2*xreft_1_(2))/6;
 
             res_ << "**" << inTime << "	" << lw << std::endl;
             wrist_ << inTime;
@@ -305,9 +305,9 @@ namespace dynamicgraph
           if(stop_)
           {
             lw = R;
-            lw(0,3) = ( (qs(0)+xrot(0)) + 2*R(0,3) + 2*xreft_1_(0))/5;
-            lw(1,3) = ( (qs(1)+xrot(1)) + 2*R(1,3) + 2*xreft_1_(1))/5;
-            lw(2,3) = ( (qs(2)-0.648703+pos_ini_(2,3)) + 12*R(2,3) + 12*xreft_1_(2))/25;
+            lw(0,3) = ( (qs(0)+xrot(0)) + 3*R(0,3) + 2*xreft_1_(0))/6;
+            lw(1,3) = ( (qs(1)+xrot(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
+            lw(2,3) = ( (qs(2)-0.648703+pos_ini_(2,3)) + 3*R(2,3) + 2*xreft_1_(2))/6;
             res_ << "~~~~ stopped = " << inTime << "    " << lw << std::endl;
           }  
 
@@ -553,7 +553,7 @@ namespace dynamicgraph
           Ryaw.multiply(xini, xrot);
           lw(0,3) = ((qs(0)+xrot(0)) + xreft_1_(0) + R(0,3))/3;
           lw(1,3) = ((qs(1) + xrot(1)) + xreft_1_(1) + R(1,3))/3;
-          lw(2,3) = ((qs(2)-0.648703+pos_ini_(2,3)) + 12*xreft_1_(2) + 12*R(2,3))/25;
+          lw(2,3) = ((qs(2)-0.648703+pos_ini_(2,3)) + 2*xreft_1_(2) + 3*R(2,3))/6;
           res_ << "~~~~ " << inTime << ", fr = " << fr << ",    xref = " << xreft_1_ << std::endl;
           res_ << "~~~~ final = " << lw << std::endl;
         }

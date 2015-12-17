@@ -20,6 +20,8 @@
 #include <time.h>
 #include <math.h>
 
+//#define DEBUG
+
 namespace dynamicgraph
 {
   namespace sot
@@ -112,10 +114,11 @@ namespace dynamicgraph
         check_.open("/tmp/controllerCalcs.txt", std::ios::out);
         //	pos_.open("/tmp/Controller.posture", std::ios::out);
         pos_.open("/tmp/Impedance.txt", std::ios::out);
-
+#ifdef DEBUG
         res_ << "----> Mass Hose: " << massHose << std::endl;
         res_ << "----> Fd: " << fd_ << std::endl;
         res_ << "----> Controller: m = " << m_ << ",  c = " << c_ << ", times m: " << mx_ << ", times c: " << cx_ << std::endl;
+#endif
         // Define refresh function for output signal
         //boost::function2<double&, double&,const int&> ftest
         //= boost::bind(&ImpedanceController::computeControlOutput, this, _1, _2);
@@ -254,9 +257,11 @@ namespace dynamicgraph
 
             init_ = true;
             f_ini_ = fr;
+#ifdef DEBUG
             res_ << "----->>> dy = " << dy_ << std::endl;
             res_ << "===>>> lw ini = " << lw_initial_ << std::endl;
             res_ << "===>>> fr ini = " << f_ini_ << std::endl;
+#endif
           }
 
           R.extract(xt);
@@ -286,18 +291,22 @@ namespace dynamicgraph
             lw(0, 3) = (3*R(0,3) + (qs(0) +xrot(0)) + 2*xreft_1_(0))/6;
             lw(1, 3) = ( (qs(1)+xrot(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
             lw(2, 3) = (3*R(2,3) + (qs(2)-0.648703+pos_ini_(2,3)) + 2*xreft_1_(2))/6;
-
+#ifdef DEBUG
             res_ << "**" << inTime << "	" << lw << std::endl;
             wrist_ << inTime;
+#endif
             for(unsigned k=0; k < 3; ++k)
             {
+#ifdef DEBUG
               wrist_ << "	" << R(k, 3) << "	" << lw(k, 3) << "	0.001" ;
+#endif
               xt_1_(k) = R(k, 3);
               xreft_1_(k) = lw(k, 3);
             }
-
+#ifdef DEBUG
             wrist_ << "	" << la(0, 3) << "	" << ra(0, 3) << "	" << la(1, 3) << "	" << ra(1, 3);
             wrist_ << "	" << la(2, 3) << "	" << ra(2, 3) << "	0.001	0.001	" << realTime << std::endl;
+#endif
 
           }
           lwct_1_ = R;
@@ -308,7 +317,9 @@ namespace dynamicgraph
             lw(0,3) = ( (qs(0)+xrot(0)) + 3*R(0,3) + 2*xreft_1_(0))/6;
             lw(1,3) = ( (qs(1)+xrot(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
             lw(2,3) = ( (qs(2)-0.648703+pos_ini_(2,3)) + 3*R(2,3) + 2*xreft_1_(2))/6;
+#ifdef DEBUG
             res_ << "~~~~ stopped = " << inTime << "    " << lw << std::endl;
+#endif
           }  
 
           lw.extract(xlw);
@@ -336,7 +347,9 @@ namespace dynamicgraph
           if (over > 2)
           {
             lw = R;
+#ifdef DEBUG
             res_ << "fr = " << fr << ",  fraw = " << fraw_ << std::endl;
+#endif
             hold();
           }
 
@@ -372,14 +385,18 @@ namespace dynamicgraph
           {
             walk_ = true;
             walkStop_ = false;
+#ifdef DEBUG
             res_ << "======> Started walking at : " << inTime*0.005 << ", realtime: " << realTime << std::endl;
+#endif
           }
           else if( ( (((fabs(vla(2))) < 0.0001)&&((fabs(vra(2))) < 0.0001)) || ((fabs(xla(0)-xra(0)) < 0.00001)&&(fabs(vla(0)) < 0.001)) ) && walk_ && floor && (vel(0) ==0.0) )
           {
             walkStop_ = true;
             walk_ = false;
             elapsed_ = 0;
+#ifdef DEBUG
             res_ << "####### Finish walking at : " << inTime*0.005<< ", realtime: " << realTime << std::endl;
+#endif
           }
 
           if( (xla(2) < 0.1051) && (xra(2) < 0.1051) && walk_ && !walkStop_)
@@ -428,19 +445,25 @@ namespace dynamicgraph
           //Check limits on the local (waist) frame
           if( xd_local(0) > (xw_local(0) + 0.20) )
           {
+#ifdef DEBUG
             res_ << inTime << "	" << "--> dx exceeding max limit!! changing from: " << xd_local(0) << " to xt = " << xw_local(0) + 0.20 << std::endl;
+#endif
             xd_local(0) = xw_local(0) + 0.20;
           }
 
           double sign = fabs(xd_local(0) - xreft_1_local_(0))/(xd_local(0) - xreft_1_local_(0));
           if( (fabs(xd_local(0) - xreft_1_local_(0)) > max_dx_ ) && ((xla(2) >= 0.1052) || (xra(2) >= 0.1052)) )
           {
+#ifdef DEBUG
             res_ << inTime << "	" << "--> vx exceeding max limit when wlkg!! changing from: " << xd_local(0) << " to xt = " << xreft_1_local_(0) + sign*max_dx_ << ",    vel sign= " << sign << std::endl;
+#endif
             xd_local(0) = xreft_1_local_(0) + sign*max_dx_;
           }
           else if( walkStop_ && (fabs(xd_local(0) - xreft_1_local_(0)) > 2*max_dx_) )
           {
+#ifdef DEBUG
             res_ << inTime << "	" << "--> vx exceeding max limit!! changing from: " << xd_local(0) << " to xt = " << xreft_1_local_(0) + sign*2*max_dx_ << ",    vel sign= " << sign << std::endl;
+#endif
             xd_local(0) = xreft_1_local_(0) + sign*2*max_dx_;
           }  
 
@@ -456,12 +479,16 @@ namespace dynamicgraph
             if( ((xd_local(2) < 0.695) || (xd_local(2) > 0.80)) && ((xla(2) >= 0.1052) || (xra(2) >= 0.01052) ))
             {
               xd_local(2) = (xt(2) + 2*xreft_1_local_(2))/3;   
+#ifdef DEBUG
               res_ << "--> Z below 0.695 or over 0.730 while wkg, chaging z -> " << xd_local(2) << std::endl;
+#endif
             }  
             else if(((xd_local(2) < 0.65) || (xd_local(2) > 0.80)))
             {
               xd_local(2) = xreft_1_local_(2);
+#ifdef DEBUG
               res_ << "----> Z below 0.65 or over 0.80, changing z to previous value -> " << xd_local(2) << std::endl;
+#endif
             }
           }
                                     // max dz
@@ -473,7 +500,9 @@ namespace dynamicgraph
               xd_local(2) = 0.695;
             else
               xd_local(2) = 0.80;
+#ifdef DEBUG
             res_ << "--> vz exceeding max limit when wlkg!! changing to xt= " << xd_local(2) << ",    vel sign= " << sign << std::endl;
+#endif
           }
           else if( (fabs(xd_local(2) - z) > 0.003) )
           {
@@ -483,7 +512,9 @@ namespace dynamicgraph
               xd_local(2) = 0.65;
             else
               xd_local(2) = 0.80;
+#ifdef DEBUG
             res_ << "--> vz exceeding max limit!! changing to xt= " << xd_local(2) << ",    vel sign= " << sign << std::endl;
+#endif
           }
 
           //Go back to the world frame
@@ -500,6 +531,7 @@ namespace dynamicgraph
           pos_ini_.extract(xini);
           Ryaw.multiply(xini, xrot);         
 
+#ifdef DEBUG
           force_ << (inTime*0.005) << "	" << inTime;
           for(unsigned k=0; k < 3; ++k)
             force_ << "	" << fr(k);
@@ -513,28 +545,31 @@ namespace dynamicgraph
           res_ << inTime << "	" << realTime << "	|" << qs(0) << ", "  << qs(1) << "|	" << lw << std::endl;
           res_ << "--   xrot: " << xrot << ", xcf: " << xcf << "  xcf_w: " << xcf_world << std::endl;   //"   xw: " << xw << std::endl;
           check_ << inTime << "	";
+#endif
+
           double ccx = (c_/dt) * (xt_local(0) - xt_1_local_(0)), ccz = (c_/dt) * (xt_local(2) - xt_1_local_(2));
           double ddx = (2 * xt_local(0)) - xt_1_local_(0), ddz = (2 * xt_local(2)) - xt_1_local_(2);
           double mdx = (((dt * dt) / m_ ) * (fr_local(0) - (fd_(0) - fla(0) - fra(0)) - ccx));
           double mdz = (((dt * dt) / m_ ) * (fr_local(2) - (fd_(2) - fla(2) - fra(2)) - ccz));
-          check_<< fla(0)<< "	" << fra(0)<< "	" << fr_local(0) - fd_(0)<< "	" << ccx << "	" << ddx << "	" << mdx << "	";
+#ifdef DEBUG      
+	  check_<< fla(0)<< "	" << fra(0)<< "	" << fr_local(0) - fd_(0)<< "	" << ccx << "	" << ddx << "	" << mdx << "	";
           check_<< fla(2)<< "	" << fra(2)<< "	" << fr_local(2) - fd_(2)<< "	" << ccz << "	" << ddz << "	" << mdz << "	" << realTime << std::endl;
 
           pos_ << inTime << "	" << imp(0) << "	" << imp(1) << "	" << imp(2);
           pos_ << "	" << df(0) << "	" << df(1) << "	" << df(2);
           pos_ << "	" << realTime << std::endl;
-
+#endif
           pos_ini_.extract(xini);
           xrot.setZero();
           Ryaw.multiply(xini, xrot);
-
+#ifdef DEBUG
           wrist_ << inTime;
           for(unsigned k=0; k < 3; ++k)
             wrist_ << "	" << xt(k) << "	" << lw(k, 3) << "	" << xt_local(k);   //xcf_world(k);
 
           wrist_ << "	" << xla(0) << "	" << xg(0) << "	" << xla(1) << "	" << xd_local(1);
           wrist_ << "	" << xla(2) << "	" << xg(2) << "	" << qs(0)+xrot(0) << "	" << qs(1)+xrot(1) << "	" << realTime << std::endl;
-
+#endif
           lwct_1_ = lw;
           xlat_2_ = xlat_1_;
           xlat_1_ = xla;
@@ -554,8 +589,10 @@ namespace dynamicgraph
           lw(0,3) = ((qs(0)+xrot(0)) + xreft_1_(0) + R(0,3))/3;
           lw(1,3) = ((qs(1) + xrot(1)) + xreft_1_(1) + R(1,3))/3;
           lw(2,3) = ((qs(2)-0.648703+pos_ini_(2,3)) + 2*xreft_1_(2) + 3*R(2,3))/6;
+#ifdef DEBUG
           res_ << "~~~~ " << inTime << ", fr = " << fr << ",    xref = " << xreft_1_ << std::endl;
           res_ << "~~~~ final = " << lw << std::endl;
+#endif
         }
 
         t_1_ = inTime;
@@ -569,8 +606,9 @@ namespace dynamicgraph
 
         lw.extract(xreft_1_);
         //Rinv.multiply(xlw, xreft_1_local_);
+#ifdef DEBUG
         res_ << inTime << "	" << "++++++ ref local = " << xreft_1_local_ << std::endl;
-
+#endif
         return lw;
       }
 
@@ -651,7 +689,9 @@ namespace dynamicgraph
               fRt_1_(i) = fR(i);
               fRt_2_(i) = fR(i);
             }
+#ifdef DEBUG
             res_ << "f0: " << fR << ", " << ff_2_ << std::endl;
+#endif
           }
 
           for(unsigned i=0; i < 3; i++)
@@ -691,7 +731,9 @@ namespace dynamicgraph
         {
           stop_ = true;
           start_ = false;
+#ifdef DEBUG
           res_ << "=========Controller stoppped at t = " << t_1_ << std::endl;
+#endif
         }
         else
         {
@@ -726,7 +768,9 @@ namespace dynamicgraph
           //stop_  = true;
           //throw std::runtime_error
           //("The Controller was stopped!! Hose released!!");
+#ifdef DEBUG
           res_ << "The Controller was stopped!! Hose released!! at t = " << (t_1_) << std::endl;
+#endif
         }
       }
 

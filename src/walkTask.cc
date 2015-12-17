@@ -21,6 +21,8 @@
 #include <time.h>
 #include <math.h>
 
+//#define DEBUG
+
 namespace dynamicgraph
 {
   namespace sot
@@ -132,13 +134,16 @@ namespace dynamicgraph
         Rwaist.extract(pos);
         Rwaist.extract(Rot);
         pos(2) = getYaw(Rwaist);
-
+#ifdef DEBUG
         pos_ << inTime;
         vel_ << inTime;
+#endif
         for(unsigned int i=0; i<3; i++)
         {
           erot(i) = pos(i) - posDes_(i);    
+#ifdef DEBUG
           pos_ << " " << pos(i);
+#endif
         }
         Rot.inverse(Rinv);
         Rinv.multiply(erot, e_);
@@ -160,15 +165,17 @@ namespace dynamicgraph
             veldes(i) = 0.01 *(fabs(e_dot_(i))/e_dot_(i));
           else
             veldes(i) = e_dot_(i);
-
+#ifdef DEBUG
           vel_ << " " << veldes(i);
           pos_ << " " << e_(i);
+#endif
         }
 
         eyt_1_ = e_(1);              
+#ifdef DEBUG
         pos_ << std::endl;
         vel_ << "   " << g << std::endl;
-
+#endif
         return veldes;
       }
 

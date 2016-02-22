@@ -5,6 +5,14 @@
 
 SET (LIBRARY_NAME ${PROJECT_NAME})
 
+# Search for Eigen.
+ADD_REQUIRED_DEPENDENCY("eigen3 >= 3.0.0")
+# Eigen (at least version 3.0.5) makes gcc report conversion warnings
+# when one assigns to a block. This floods the compilation results.
+# So we include Eigen headers as if they were system headers: the compiler
+# won't report warning coming from them.
+INCLUDE_DIRECTORIES(SYSTEM ${EIGEN3_INCLUDE_DIRS})
+
 ADD_LIBRARY (${LIBRARY_NAME} SHARED
   cubic-interpolation.cc
   cubic-interpolation.hh
@@ -15,8 +23,15 @@ ADD_LIBRARY (${LIBRARY_NAME} SHARED
   seqplay.hh
   impController.cc
   impController.hh
+  velocity-from-power-law.cc
+  velocity-from-power-law.hh
   walkTask.cc
   walkTask.hh
+  power_law/ellipse-vector-field-numeric.cpp
+  power_law/ellipse-vector-field-numeric.hh
+  power_law/PowerLaw.cc
+  power_law/PowerLaw.hh
+  power_law/PowerLaw.hpp
   )
 
 PKG_CONFIG_USE_DEPENDENCY (${LIBRARY_NAME} sot-core)

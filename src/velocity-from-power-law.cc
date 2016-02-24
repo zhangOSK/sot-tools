@@ -49,7 +49,7 @@ namespace dynamicgraph {
         LeftFootCurrentPosSIN(NULL,"VelocityFromPowerLaw("+name+")::input(homogeneousmatrix)::leftfootcurrentpos"),
         RightFootCurrentPosSIN(NULL,"VelocityFromPowerLaw("+name+")::input(homogeneousmatrix)::rightfootcurrentpos"),
         WaistCurrentPosSIN(NULL,"VelocityFromPowerLaw("+name+")::input(vector)::waist"),
-        hp_(1.0, 0.5, 0.0403686, 0.0, 2.0),
+        hp_(0.0, 0.0, 0.0, 0.0, 0.0),
         // HopfParameters(radiusx, radiusy, gamma, beta, zerokapparadius)
         powerLawGeneration_(this,hp_)
       {
@@ -91,7 +91,7 @@ namespace dynamicgraph {
                            radiusy,
                            gamma,
                            beta,
-                           2);
+                           2.0);
         hp_.save();
         powerLawGeneration_.~PowerLawGeneration();
         powerLawGeneration_ = PowerLawGeneration(this,hp_);
@@ -111,11 +111,11 @@ namespace dynamicgraph {
           rf=RightFootCurrentPosSIN(time);
           lf=LeftFootCurrentPosSIN(time);
           waist=WaistCurrentPosSIN(time);
-          std::cout << "lfx = " << lf(0,3) << std::endl;
-          std::cout << "lfy = " << lf(1,3) << std::endl;
-          std::cout << "rfx = " << rf(0,3) << std::endl;
-          std::cout << "rfy = " << rf(1,3) << std::endl;
-          std::cout << "ctheta = " << waist(5) << std::endl;
+//          std::cout << "lfx = " << lf(0,3) << std::endl;
+//          std::cout << "lfy = " << lf(1,3) << std::endl;
+//          std::cout << "rfx = " << rf(0,3) << std::endl;
+//          std::cout << "rfy = " << rf(1,3) << std::endl;
+//          std::cout << "ctheta = " << waist(5) << std::endl;
           velocity = powerLawGeneration_.generateVelocityFromPowerLawVectorField(
                 time*0.005,waist(5),
                 lf(0,3),lf(1,3),

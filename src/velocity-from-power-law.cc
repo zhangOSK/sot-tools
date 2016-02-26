@@ -123,6 +123,11 @@ namespace dynamicgraph {
 	  double lfx(0.0), lfy(0.0), rfx(0.0), rfy(0.0), theta(0.0), thresh(10.0);
 	  if(std::abs(lf(0,3))>thresh || std::abs(lf(1,3))>thresh || std::abs(rf(0,3))>thresh || std::abs(rf(1,3))>thresh)
 	    {
+	      lfx = previousValues_[0];
+	      lfy = previousValues_[1];
+	      rfx = previousValues_[2];
+	      rfy = previousValues_[3];
+	      theta = previousValues_[4];
 	    }
 	  else
 	    {

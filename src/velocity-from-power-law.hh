@@ -66,6 +66,7 @@ namespace dynamicgraph {
         EllipseVectorFieldNumeric::HopfParameters hp_;
         typedef PowerLaw<VelocityFromPowerLaw> PowerLawGeneration;
         PowerLawGeneration powerLawGeneration_;
+	std::vector<double> previousValues_;
 
       }; // class VelocityFromPowerLaw
     } // namespace tools

@@ -38,8 +38,10 @@ namespace dynamicgraph {
         signalRegistration(LeftFootCurrentPosSIN <<
                            RightFootCurrentPosSIN <<
                            WaistCurrentPosSIN);
-
+	
         initializeCommand();
+
+	previousValues_.resize(5,0.0);
       }
 
       VelocityFromPowerLaw::VelocityFromPowerLaw (const std::string name):
@@ -63,6 +65,8 @@ namespace dynamicgraph {
                            WaistCurrentPosSIN);
 
         initializeCommand();
+
+	previousValues_.resize(5,0.0);
       }
 
       void VelocityFromPowerLaw::initializeCommand()
@@ -116,6 +120,25 @@ namespace dynamicgraph {
 //          std::cout << "rfx = " << rf(0,3) << std::endl;
 //          std::cout << "rfy = " << rf(1,3) << std::endl;
 //          std::cout << "ctheta = " << waist(5) << std::endl;
+	  double lfx(0.0), lfy(0.0), rfx(0.0), rfy(0.0), theta(0.0), thresh(10.0);
+	  if(std::abs(lf(0,3))>thresh || std::abs(lf(1,3))>thresh || std::abs(rf(0,3))>thresh || std::abs(rf(1,3))>thresh)
+	    {
+	    }
+	  else
+	    {
+	      lfx = lf(0,3);
+	      lfy = lf(1,3);
+	      rfx = rf(0,3);
+	      rfy = rf(1,3);
+	      theta = waist(5);
+	      previousValues_.resize(5,0.0);
+	      previousValues_[0] = lf(0,3);
+	      previousValues_[1] = lf(1,3);
+	      previousValues_[2] = rf(0,3);
+	      previousValues_[3] = rf(1,3);
+	      previousValues_[4] = waist(5);
+	    }	  
+	  
           velocity = powerLawGeneration_.generateVelocityFromPowerLawVectorField(
                 time*0.005,waist(5),
                 lf(0,3),lf(1,3),

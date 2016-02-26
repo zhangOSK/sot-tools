@@ -66,7 +66,8 @@ PID(double* e, double& integral )
 {
   double Kp_(1.5),Ki_(1.0),Kd_(1.5),T(0.005);
   double Saturation_integral = 0.5;
-  double error = e[0];
+  double error = (e[0]+e[1]+e[2]+e[3])/5.0;
+  e[0]=error;
   double derivate = ( e[0] + 3*e[1] - 3*e[2] - e[3] ) / (6*T);
   integral += e[0]*T;
 

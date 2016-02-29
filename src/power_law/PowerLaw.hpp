@@ -111,7 +111,7 @@ generateVelocityFromPowerLawVectorField(double time, double ctheta,
   vector_double_t VelProf(3);
 
   // Initialize VelProf
-  for(unsigned int li=0;li<2;li++)
+  for(unsigned int li=0;li<3;li++)
     VelProf[li]=0.0;
 
   //double local_x = -cy+ellipseVectorField_.hopfParameters_.radiusx_;
@@ -120,12 +120,22 @@ generateVelocityFromPowerLawVectorField(double time, double ctheta,
   double local2_y =  px;
 
   double nctheta = normalize_angle(ctheta);
-  heading_angle_ = normalize_angle(nctheta+M_PI/2.0);// try update before ***
+  heading_angle_ = normalize_angle(nctheta+M_PI/2.0);
 
   ellipseVectorField_.hopfParameters_.EllipseNumeric(local2_x,local2_y,VelProf[0],VelProf[1]);
 
+  double tmp_local_x(0.0),tmp_local_y(0.0);
+  vector_double_t VelTmp(3);
+  for(unsigned int li=0;li<3;li++)
+    VelTmp[li]=0.0;
+
+//  tmp_local_x = local2_x + 0.8*VelProf[0] ;
+//  tmp_local_y = local2_y + 0.8*VelProf[1] ;
+//  ellipseVectorField_.hopfParameters_.EllipseNumeric(tmp_local_x,tmp_local_y,VelTmp[0],VelTmp[1]);
+
   // Integrate over the heading angle.
   double theta = atan2(VelProf[1],VelProf[0]);
+//  double theta = atan2(VelTmp[1],VelTmp[0]);
   VelProf[2] = (theta-heading_angle_);
   if(std::abs(VelProf[2])>M_PI)
   {

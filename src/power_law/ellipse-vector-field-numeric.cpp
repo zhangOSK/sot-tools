@@ -171,7 +171,8 @@ void HopfParameters::save(std::string &filename) const
 {
   std::ofstream ofs;
   std::stringstream os;
-  os << filename << radiusx_
+  os << filename
+     << "_RX_" << radiusx_
      << "_RY_" << radiusy_
      << "_G_" << gamma_
      << "_B_" << beta_

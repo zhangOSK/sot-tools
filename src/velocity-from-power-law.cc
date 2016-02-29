@@ -96,7 +96,11 @@ namespace dynamicgraph {
                            gamma,
                            beta,
                            2.0);
-        hp_.save();
+//        std::cout << "radiusx ; " << hp_.radiusx_ << "   "
+//             << "radiusy ; " << hp_.radiusy_ << "   "
+//             << "gamma ; " << hp_.gamma_ << "   "
+//             << "beta ; " << hp_.beta_ << "   " << std::endl ;
+        //hp_.save();
         powerLawGeneration_.~PowerLawGeneration();
         powerLawGeneration_ = PowerLawGeneration(this,hp_);
 

@@ -83,11 +83,11 @@ PID(double* e, double& integral )
              Kd_ * derivate +
              Ki_ * integral;
 
-//  if (std::abs(v)>0.4)
-//    if(v>0)
-//      v=0.4;
-//    if(v<0)
-//      v=-0.4;
+  if (std::abs(v)>0.17)
+    if(v>0)
+      v=0.17;
+    if(v<0)
+      v=-0.17;
 
   e[1] = e[0];
   e[2] = e[1];

@@ -128,7 +128,7 @@ generateVelocityFromPowerLawVectorField(double time, double ctheta,
 
   ellipseVectorField_.hopfParameters_.EllipseNumeric(local2_x,local2_y,VelProf[0],VelProf[1]);
 
-  double tmp_local_x(0.0),tmp_local_y(0.0);
+  //double tmp_local_x(0.0),tmp_local_y(0.0);
   vector_double_t VelTmp(3);
   for(unsigned int li=0;li<3;li++)
     VelTmp[li]=0.0;

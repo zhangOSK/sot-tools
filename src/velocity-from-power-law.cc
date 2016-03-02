@@ -148,10 +148,10 @@ namespace dynamicgraph {
 	      previousValues_[4] = waist(5);
 	    }	  
 	  
-          velocity = powerLawGeneration_.generateVelocityFromPowerLawVectorField(
-                time*0.005,waist(5),
-                lf(0,3),lf(1,3),
-                rf(0,3),rf(1,3));
+        velocity = powerLawGeneration_.generateVelocityFromPowerLawVectorField(
+                time*0.005,theta,
+                lfx,lfy,
+                rfx,rfy);
         }catch(...)
         {
           velocity << 0.0001 , 0.0 , 0.0 ;

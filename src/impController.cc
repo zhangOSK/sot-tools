@@ -39,11 +39,11 @@ namespace dynamicgraph
         Entity(inName),
         forceSIN(0, "ImpedanceController("+inName+")::input(vector)::force"),
         postureSIN(0, "ImpedanceController("+inName+")::input(vector)::postureIN"),
-        velocitySIN(0, "ImpedanceController("+inName+")::input(vector)::velocityIN"),
-        lwSOUT(forceSIN << lwSIN << laSIN, "ImpedanceController("+inName+")::output(MatrixHomo)::leftWristOUT"),
         lwSIN(0, "ImpedanceController("+inName+")::input(MatrixHomo)::leftWristIN"),
         laSIN(0, "ImpedanceController("+inName+")::input(MatrixHomo)::leftAnkleIN"),
         raSIN(0, "ImpedanceController("+inName+")::input(MatrixHomo)::rightAnkleIN"),
+        velocitySIN(0, "ImpedanceController("+inName+")::input(vector)::velocityIN"),
+        lwSOUT(forceSIN << lwSIN << laSIN, "ImpedanceController("+inName+")::output(MatrixHomo)::leftWristOUT"),
         postureSOUT(forceSIN << postureSIN, "ImpedanceController("+inName+")::output(vector)::postureOUT"),
         forceSOUT(forceSIN << lwSIN, "ImpedanceController("+inName+")::output(vector)::leftWristForce"),
         m_(1.00), c_(5.0), mx_(20), cx_(100), max_dx_(0.005), dist_(0.0), vel_fix_(0.0), t_1_(0), tf_1_(0), elapsed_(0),
@@ -235,8 +235,9 @@ namespace dynamicgraph
         xini.resize(3); xini.setZero();
         time_t myTime;
         time(&myTime);
+#ifdef DEBUG
         double realTime = difftime(myTime, mktime(&iniTime_));
-
+#endif
         MatrixRotation Ryaw, Rlw, Rrot, Rinv;
 
         la.extract(Ryaw);
@@ -546,12 +547,11 @@ namespace dynamicgraph
           res_ << "--   xrot: " << xrot << ", xcf: " << xcf << "  xcf_w: " << xcf_world << std::endl;   //"   xw: " << xw << std::endl;
           check_ << inTime << "	";
 #endif
-
+#ifdef DEBUG      
           double ccx = (c_/dt) * (xt_local(0) - xt_1_local_(0)), ccz = (c_/dt) * (xt_local(2) - xt_1_local_(2));
           double ddx = (2 * xt_local(0)) - xt_1_local_(0), ddz = (2 * xt_local(2)) - xt_1_local_(2);
           double mdx = (((dt * dt) / m_ ) * (fr_local(0) - (fd_(0) - fla(0) - fra(0)) - ccx));
           double mdz = (((dt * dt) / m_ ) * (fr_local(2) - (fd_(2) - fla(2) - fra(2)) - ccz));
-#ifdef DEBUG      
 	  check_<< fla(0)<< "	" << fra(0)<< "	" << fr_local(0) - fd_(0)<< "	" << ccx << "	" << ddx << "	" << mdx << "	";
           check_<< fla(2)<< "	" << fra(2)<< "	" << fr_local(2) - fd_(2)<< "	" << ccz << "	" << ddz << "	" << mdz << "	" << realTime << std::endl;
 

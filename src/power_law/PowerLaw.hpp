@@ -65,10 +65,11 @@ double PowerLaw<VelocityFromPowerLawClass>::
 PID(double* e, double& integral )
 {
   double Kp_(1.5),Ki_(1.0),Kd_(1.5),T(0.005);
-  double Saturation_integral = 0.5;
-  double error = (e[0]+e[1]+e[2]+e[3])/5.0;
+  double Saturation_integral = 0.25;
+  double error = (e[0]+e[1]+e[2]+e[3])/4.0;
   e[0]=error;
   double derivate = ( e[0] + 3*e[1] - 3*e[2] - e[3] ) / (6*T);
+
   integral += e[0]*T;
 
   if(Ki_!=0.0)
@@ -83,11 +84,14 @@ PID(double* e, double& integral )
              Kd_ * derivate +
              Ki_ * integral;
 
-  if (std::abs(v)>0.17)
-    if(v>0)
-      v=0.17;
-    if(v<0)
-      v=-0.17;
+  double thresh=0.17;
+  if (std::abs(v)>thresh)
+    {
+      if(v>0)
+  	v=thresh;
+      if(v<0)
+  	v=-thresh;
+    }
 
   e[1] = e[0];
   e[2] = e[1];
@@ -147,6 +151,8 @@ generateVelocityFromPowerLawVectorField(double time, double ctheta,
   VelProf[2] = atan2(sin(VelProf[2]), cos(VelProf[2]));
   error_[0]=VelProf[2];
   VelProf[2] = PID(error_,integral_);
+
+  //std::cout << error_[0] << std::endl ;
 
   double c = std::cos(heading_angle_);
   double s = std::sin(heading_angle_);

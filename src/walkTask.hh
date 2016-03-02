@@ -66,7 +66,7 @@ namespace dynamicgraph {
 
         void setGoalPosition (const Vector& inPos)
         {
-          posDes_ = inPos;
+	  posDes_ = inPos;
           double mag = posDes_.norm();
           gain_ = max_vel_(0)/mag;
         }

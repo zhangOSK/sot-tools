@@ -36,14 +36,18 @@ namespace dynamicgraph
 
       //DYNAMICGRAPH_FACTORY_ENTITY_PLUGIN(walkTask, "walkTask");
 
-        walkTask::walkTask(const std::string& inName) :
+      walkTask::walkTask(const std::string& inName) :
         Entity(inName),
         waistSIN(0, "walkTask("+inName+")::input(MatrixHomo)::waistIN"),
+        rightFootSIN(0, "walkTask("+inName+")::input(MatrixHomo)::rightfootSIN"),
+        leftFootSIN(0, "walkTask("+inName+")::input(MatrixHomo)::leftfootSIN"),
         velocitySOUT(waistSIN, "walkTask("+inName+")::output(vector)::velocitydesOUT"),
         gain_(0.20), A_(0.0), B_(0.0), C_(0.0), eyt_1_(0.0), posDes_(), e_(0.0), e_dot_(0.0), t_1_(0), init_(false), iniTime_(std::tm())
       {
         // Register signals into the entity.
         signalRegistration (waistSIN);
+        signalRegistration (rightFootSIN);
+        signalRegistration (leftFootSIN);
         signalRegistration (velocitySOUT);
 
         posDes_.resize(3);
@@ -90,7 +94,7 @@ namespace dynamicgraph
             "    set with a passing point, max vel allowed = 0.1\n"
             "      Input:\n"
             "        floating point value: value at 0\n"
-            "    \n";       
+            "    \n";
         addCommand(std::string("setAdaptiveGain"),
                    new ::dynamicgraph::command::Setter<walkTask, double>
                    (*this, &walkTask::setAdaptiveGain, docstring));
@@ -128,21 +132,55 @@ namespace dynamicgraph
 
       Vector& walkTask::computeDesiredVel(Vector& veldes, const int& inTime)
       {
-        const MatrixHomogeneous& Rwaist = waistSIN(inTime);
+        bool dataReadFeet = false ;
+        bool dataReadFF = false ;
         MatrixRotation Rot, Rinv;
         Vector pos, erot;
         veldes.resize(3);   pos.resize(3);  erot.resize(3);
         veldes.setZero();   pos.setZero();  erot.setZero();
-        Rwaist.extract(pos);
-        Rwaist.extract(Rot);
-        pos(2) = getYaw(Rwaist);
+
+        try
+        {
+          const MatrixHomogeneous & leftfoot = waistSIN(inTime);
+          const MatrixHomogeneous & rightfoot = waistSIN(inTime);
+          Vector posL,posR;
+          leftfoot.extract(posL);
+          leftfoot.extract(Rot);
+          rightfoot.extract(posR);
+          pos(0) = ( posL(0) + posR(0) )*0.5;
+          pos(1) = ( posL(1) + posR(1) )*0.5;
+          pos(2) = getYaw(leftfoot);
+        }catch(...)
+        {
+          dataReadFeet=false;
+        }
+        if(!dataReadFeet)
+        {
+          try
+          {
+            const MatrixHomogeneous & Rwaist = waistSIN(inTime);
+            Rwaist.extract(pos);
+            Rwaist.extract(Rot);
+            pos(2) = getYaw(Rwaist);
+          }catch(...)
+          {
+            dataReadFF=false;
+          }
+        }
+
+        if(!dataReadFeet && !dataReadFF)
+        {
+          veldes.setZero();
+          return veldes;
+        }
+
 #ifdef DEBUG
         pos_ << inTime;
         vel_ << inTime;
 #endif
         for(unsigned int i=0; i<3; i++)
         {
-          erot(i) = pos(i) - posDes_(i);    
+          erot(i) = pos(i) - posDes_(i);
 #ifdef DEBUG
           pos_ << " " << pos(i);
 #endif
@@ -151,51 +189,51 @@ namespace dynamicgraph
         Rinv.multiply(erot, e_);
         e_(2) = erot(2);
 
-        double g = computeGain(); 
+        double g = computeGain();
         for(unsigned int i=0; i<3; i++)
         {
           if(i==1)
-            e_dot_(i) = -factor_(i)*g * e_(i) - factor_(i)*g * (0.005/2)*(e_(i) + eyt_1_); 
+            e_dot_(i) = -factor_(i)*g * e_(i) - factor_(i)*g * (0.005/2)*(e_(i) + eyt_1_);
           else
             e_dot_(i) = -factor_(i)*g * e_(i);
 
           if( ( (fabs(e_(i)) < tolerance_(i)) && (e_.norm() < 0.12) ) || isnan(e_dot_(i)))
-	    {
-	      veldes(i) = endVel_(i);
-	    }
+          {
+            veldes(i) = endVel_(i);
+          }
           else if(fabs(e_dot_(i)) > max_vel_(i))
-	    {
-	      if(e_dot_(i)>0.0)
-		{
-		  veldes(i) = max_vel_(i) ;
-		}
-	      else
-		{
-		  veldes(i) = -max_vel_(i) ;
-		}
-	    }
+          {
+            if(e_dot_(i)>0.0)
+            {
+              veldes(i) = max_vel_(i) ;
+            }
+            else
+            {
+              veldes(i) = -max_vel_(i) ;
+            }
+          }
           else if( fabs(e_dot_(i)) < 0.01)
+          {
+            if(e_dot_(i)>0.0)
             {
-	      if(e_dot_(i)>0.0)
-		{
-		  veldes(i) = 0.01 ;
-		}
-	      else
-		{
-		  veldes(i) = -0.01 ;
-		}
-	    }
+              veldes(i) = 0.01 ;
+            }
+            else
+            {
+              veldes(i) = -0.01 ;
+            }
+          }
           else
-            {
-	      veldes(i) = e_dot_(i);
-	    }
+          {
+            veldes(i) = e_dot_(i);
+          }
 #ifdef DEBUG
           vel_ << " " << veldes(i);
           pos_ << " " << e_(i);
 #endif
         }
 
-        eyt_1_ = e_(1);              
+        eyt_1_ = e_(1);
 #ifdef DEBUG
         pos_ << std::endl;
         vel_ << "   " << g << std::endl;
@@ -205,13 +243,13 @@ namespace dynamicgraph
 
       double walkTask::computeGain()
       {
-        double res=0.0, enorm = e_.norm();       
+        double res=0.0, enorm = e_.norm();
         if(A_ == 0)
           res = gain_;
         else
         {
           // Usually use the magnitude of the error, for now just using X error
-          res = A_ * exp( -B_*enorm ) + C_; 
+          res = A_ * exp( -B_*enorm ) + C_;
         }
 
         return res;

@@ -86,6 +86,8 @@ namespace dynamicgraph {
         Vector& computeDesiredVel(Vector& veldes, const int& inTime);
 
         SignalPtr <MatrixHomogeneous, int> waistSIN;
+        SignalPtr <MatrixHomogeneous, int> rightFootSIN;
+        SignalPtr <MatrixHomogeneous, int> leftFootSIN;
 
         SignalTimeDependent < ::dynamicgraph::Vector, int > velocitySOUT;
 

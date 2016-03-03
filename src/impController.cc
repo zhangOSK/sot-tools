@@ -108,13 +108,14 @@ namespace dynamicgraph
         iniTime_.tm_year = 115;	iniTime_.tm_mon = 11;	iniTime_.tm_mday = 15;
         // year counted from 1900
 
+#ifdef DEBUG
         wrist_.open("/tmp/WristPos.txt", std::ios::out);
         force_.open("/tmp/Force.txt", std::ios::out);
         res_.open("/tmp/ControllerOutput.txt", std::ios::out);
         check_.open("/tmp/controllerCalcs.txt", std::ios::out);
         //	pos_.open("/tmp/Controller.posture", std::ios::out);
         pos_.open("/tmp/Impedance.txt", std::ios::out);
-#ifdef DEBUG
+
         res_ << "----> Mass Hose: " << massHose << std::endl;
         res_ << "----> Fd: " << fd_ << std::endl;
         res_ << "----> Controller: m = " << m_ << ",  c = " << c_ << ", times m: " << mx_ << ", times c: " << cx_ << std::endl;
@@ -746,11 +747,13 @@ namespace dynamicgraph
       {
         if(stop_)
         {
+#ifdef DEBUG
           wrist_.close();
           res_.close();
           force_.close();
           pos_.close();
           check_.close();
+#endif
         }
         else
         {

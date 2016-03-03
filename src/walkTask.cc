@@ -21,7 +21,7 @@
 #include <time.h>
 #include <math.h>
 
-//#define DEBUG
+#define DEBUG
 
 namespace dynamicgraph
 {
@@ -49,6 +49,10 @@ namespace dynamicgraph
         signalRegistration (rightFootSIN);
         signalRegistration (leftFootSIN);
         signalRegistration (velocitySOUT);
+
+        velocitySOUT.addDependency( rightFootSIN  );
+        velocitySOUT.addDependency( leftFootSIN  );
+        velocitySOUT.addDependency( waistSIN  );
 
         posDes_.resize(3);
         posDes_.setZero();
@@ -141,19 +145,23 @@ namespace dynamicgraph
 
         try
         {
-          const MatrixHomogeneous & leftfoot = waistSIN(inTime);
-          const MatrixHomogeneous & rightfoot = waistSIN(inTime);
+          const MatrixHomogeneous & leftfoot = leftFootSIN(inTime);
+          const MatrixHomogeneous & rightfoot = rightFootSIN(inTime);
           Vector posL,posR;
+          posL.resize(3);  posR.resize(3);
+          posL.setZero();  posR.setZero();
           leftfoot.extract(posL);
           leftfoot.extract(Rot);
           rightfoot.extract(posR);
+          pos(2) = getYaw(leftfoot);
           pos(0) = ( posL(0) + posR(0) )*0.5;
           pos(1) = ( posL(1) + posR(1) )*0.5;
-          pos(2) = getYaw(leftfoot);
+          dataReadFeet=true;
         }catch(...)
         {
           dataReadFeet=false;
         }
+
         if(!dataReadFeet)
         {
           try
@@ -162,6 +170,7 @@ namespace dynamicgraph
             Rwaist.extract(pos);
             Rwaist.extract(Rot);
             pos(2) = getYaw(Rwaist);
+            dataReadFF=true;
           }catch(...)
           {
             dataReadFF=false;
@@ -170,6 +179,7 @@ namespace dynamicgraph
 
         if(!dataReadFeet && !dataReadFF)
         {
+          std::cout << "problem in walk task : no signal in input " << std::endl ;
           veldes.setZero();
           return veldes;
         }
@@ -183,12 +193,12 @@ namespace dynamicgraph
           erot(i) = pos(i) - posDes_(i);
 #ifdef DEBUG
           pos_ << " " << pos(i);
+          pos_ << " " << posDes_(i);
 #endif
         }
         Rot.inverse(Rinv);
         Rinv.multiply(erot, e_);
         e_(2) = erot(2);
-
         double g = computeGain();
         for(unsigned int i=0; i<3; i++)
         {
@@ -212,16 +222,9 @@ namespace dynamicgraph
               veldes(i) = -max_vel_(i) ;
             }
           }
-          else if( fabs(e_dot_(i)) < 0.01)
+          else if( fabs(e_dot_(i)) < 0.0001)
           {
-            if(e_dot_(i)>0.0)
-            {
-              veldes(i) = 0.01 ;
-            }
-            else
-            {
-              veldes(i) = -0.01 ;
-            }
+            veldes(i) = 0.0001 ;
           }
           else
           {

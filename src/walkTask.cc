@@ -21,7 +21,7 @@
 #include <time.h>
 #include <math.h>
 
-#define DEBUG
+//#define DEBUG
 
 namespace dynamicgraph
 {

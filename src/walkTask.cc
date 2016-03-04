@@ -14,7 +14,6 @@
 #include <dynamic-graph/factory.h>
 #include <dynamic-graph/command-setter.h>
 #include <dynamic-graph/command-getter.h>
-#include <sot/core/vector-roll-pitch-yaw.hh>
 
 #include <iostream>
 #include <fstream>
@@ -56,9 +55,11 @@ namespace dynamicgraph
 
         posDes_.resize(3);
         posDes_.setZero();
-        posDes_(0) = 0.0;
-        posDes_(1) = 0.0;
-        posDes_(2) = 0.0;
+        posL_.resize(3);  posR_.resize(3);
+        posL_.setZero();  posR_.setZero();
+
+        pos_.resize(3);  erot_.resize(3);
+        pos_.setZero();  erot_.setZero();
 
         e_.resize(3);    e_dot_.resize(3);  max_vel_.resize(3); factor_.resize(3);  tolerance_.resize(3);   endVel_.resize(3);
         e_.setZero();    e_dot_.setZero();  max_vel_.setZero(); factor_.setZero();  tolerance_.setZero();   endVel_.setZero();
@@ -75,8 +76,8 @@ namespace dynamicgraph
         iniTime_.tm_year = 115;	iniTime_.tm_mon = 11;	iniTime_.tm_mday = 1;
         // year counted from 1900
 #ifdef DEBUG
-        pos_.open("/tmp/WaistPosition.txt", std::ios::out);
-        vel_.open("/tmp/CommandedVelocity.txt", std::ios::out);
+        pose_file_.open("/tmp/WaistPosition.txt", std::ios::out);
+        vel_file_.open("/tmp/CommandedVelocity.txt", std::ios::out);
 #endif
         velocitySOUT.setFunction (boost::bind(&walkTask::computeDesiredVel, this, _1, _2));
 
@@ -129,8 +130,8 @@ namespace dynamicgraph
       walkTask::~walkTask()
       {
 #ifdef DEBUG
-        pos_.close();
-        vel_.close();
+        pose_file_.close();
+        vel_file_.close();
 #endif
       }
 
@@ -138,24 +139,19 @@ namespace dynamicgraph
       {
         bool dataReadFeet = false ;
         bool dataReadFF = false ;
-        MatrixRotation Rot, Rinv;
-        Vector pos, erot;
-        veldes.resize(3);   pos.resize(3);  erot.resize(3);
-        veldes.setZero();   pos.setZero();  erot.setZero();
+        veldes.resize(3);
+        veldes.setZero();
 
         try
         {
           const MatrixHomogeneous & leftfoot = leftFootSIN(inTime);
           const MatrixHomogeneous & rightfoot = rightFootSIN(inTime);
-          Vector posL,posR;
-          posL.resize(3);  posR.resize(3);
-          posL.setZero();  posR.setZero();
-          leftfoot.extract(posL);
-          leftfoot.extract(Rot);
-          rightfoot.extract(posR);
-          pos(2) = getYaw(leftfoot);
-          pos(0) = ( posL(0) + posR(0) )*0.5;
-          pos(1) = ( posL(1) + posR(1) )*0.5;
+          leftfoot.extract(posL_);
+          leftfoot.extract(Rot_);
+          rightfoot.extract(posR_);
+          pos_(2) = getYaw(leftfoot);
+          pos_(0) = ( posL_(0) + posR_(0) )*0.5;
+          pos_(1) = ( posL_(1) + posR_(1) )*0.5;
           dataReadFeet=true;
         }catch(...)
         {
@@ -167,9 +163,9 @@ namespace dynamicgraph
           try
           {
             const MatrixHomogeneous & Rwaist = waistSIN(inTime);
-            Rwaist.extract(pos);
-            Rwaist.extract(Rot);
-            pos(2) = getYaw(Rwaist);
+            Rwaist.extract(pos_);
+            Rwaist.extract(Rot_);
+            pos_(2) = getYaw(Rwaist);
             dataReadFF=true;
           }catch(...)
           {
@@ -185,20 +181,20 @@ namespace dynamicgraph
         }
 
 #ifdef DEBUG
-        pos_ << inTime;
-        vel_ << inTime;
+        pose_file_ << inTime;
+        vel_file_ << inTime;
 #endif
         for(unsigned int i=0; i<3; i++)
         {
-          erot(i) = pos(i) - posDes_(i);
+          erot_(i) = pos_(i) - posDes_(i);
 #ifdef DEBUG
-          pos_ << " " << pos(i);
-          pos_ << " " << posDes_(i);
+          pose_file_ << " " << pos_(i);
+          pose_file_ << " " << posDes_(i);
 #endif
         }
-        Rot.inverse(Rinv);
-        Rinv.multiply(erot, e_);
-        e_(2) = erot(2);
+        Rot_.inverse(Rinv_);
+        Rinv_.multiply(erot_, e_);
+        e_(2) = erot_(2);
         double g = computeGain();
         for(unsigned int i=0; i<3; i++)
         {
@@ -231,15 +227,15 @@ namespace dynamicgraph
             veldes(i) = e_dot_(i);
           }
 #ifdef DEBUG
-          vel_ << " " << veldes(i);
-          pos_ << " " << e_(i);
+          vel_file_ << " " << veldes(i);
+          pose_file_ << " " << e_(i);
 #endif
         }
 
         eyt_1_ = e_(1);
 #ifdef DEBUG
-        pos_ << std::endl;
-        vel_ << "   " << g << std::endl;
+        pose_file_ << std::endl;
+        vel_file_ << "   " << g << std::endl;
 #endif
         return veldes;
       }
@@ -260,13 +256,9 @@ namespace dynamicgraph
 
       double walkTask::getYaw(const MatrixHomogeneous& Rw)
       {
-        MatrixRotation Rot;
-        VectorRollPitchYaw rpy;
-
-        Rw.extract(Rot);
-        rpy.fromMatrix(Rot);
-
-        return rpy(2);
+        Rw.extract(Rota_);
+        rpy_.fromMatrix(Rota_);
+        return rpy_(2);
       }
 
       DYNAMICGRAPH_FACTORY_ENTITY_PLUGIN(walkTask, "walkTask");

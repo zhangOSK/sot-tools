@@ -13,6 +13,7 @@
 #include <dynamic-graph/linear-algebra.h>
 #include <sot/core/matrix-homogeneous.hh>
 #include <sot/core/matrix-rotation.hh>
+#include <sot/core/vector-roll-pitch-yaw.hh>
 #include <iostream>
 #include <fstream>
 #include <time.h>
@@ -98,7 +99,14 @@ namespace dynamicgraph {
         bool init_;
 
         // Temporary variables for internal computations
-        std::ofstream pos_, vel_;
+        MatrixRotation Rot_, Rinv_;
+        Vector pos_, erot_;
+        MatrixRotation Rota_;
+        VectorRollPitchYaw rpy_;
+        Vector posL_,posR_;
+
+        // debugging damping variable
+        std::ofstream pose_file_, vel_file_;
 
         //For realtime
         struct tm iniTime_;

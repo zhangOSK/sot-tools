@@ -109,6 +109,15 @@ namespace dynamicgraph {
         MatrixHomogeneous lw_initial_, lwct_1_, pos_ini_;
 
         // Temporary variables for internal computations
+        Vector qt_;
+        Vector xt_local_, fr_local_, xcf_world_, xw_local_, xw_;
+        Vector xd_local_;
+        Vector xt_, xg_, imp_, df_, xla_, xra_, fla_, fra_ ;
+        Vector fstatic_, vla_, vra_, xcf_, xlw_, xrot_, xini_;
+        MatrixRotation MRot_;
+        Vector fR_, ff_, ft_;
+
+        // Temporary useful variables for internal computations
         MatrixRotation Rot_;
         bool start_, stop_, hold_, init_, walk_, walkStop_, open_, close_;
         std::ofstream wrist_, force_, res_, pos_, check_;

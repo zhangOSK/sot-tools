@@ -60,6 +60,22 @@ namespace dynamicgraph
         signalRegistration (postureSIN);
         signalRegistration (forceSOUT);
 
+        ff_.resize(3); fR_.resize(3); ft_.resize(3);
+
+        xd_local_.resize(3);
+        fr_local_.resize(3);
+        xcf_world_.resize(3);
+        xt_local_.resize(3);
+        xw_.resize(3);
+        xw_local_.resize(3);
+
+        xt_.resize(3);  xg_.resize(3);
+        imp_.resize(3); df_.resize(3);
+        xla_.resize(3); xra_.resize(3);
+        fla_.resize(3); fra_.resize(3); fstatic_.resize(3);
+        vla_.resize(3); vra_.resize(3); xcf_.resize(3);
+        xlw_.resize(3); xrot_.resize(3);
+        xini_.resize(3);
 
         xt_1_.resize(3);	fraw_.resize(3);	fraw_.setZero();
         ff_1_.resize(3);	ff_2_.resize(3);    xt_1_local_.resize(3);
@@ -226,14 +242,14 @@ namespace dynamicgraph
         const Vector& qs = postureSIN(inTime);
         const Vector& vel = velocitySIN(inTime);
         const double& dt = 0.005; //inTime - t_1_;
-        Vector xt, xg, imp, df, ftemp, xla, xra, fla, fra, fstatic, vla, vra, xcf, xlw, xrot, xini;
-        fla.resize(3);	fra.resize(3);	fstatic.resize(3);
-        xt.resize(3);	 xg.resize(3);	fstatic.setZero();
-        imp.resize(3);	 df.resize(3);  xt.setZero();
-        ftemp.resize(3);	xla.resize(3);	xra.resize(3);	xcf.resize(3);	xcf.setZero();
-        vla.resize(3);	vra.resize(3);	vla.setZero();	vra.setZero();
-        xlw.resize(3);  xlw.setZero();  xrot.resize(3); xrot.setZero();
-        xini.resize(3); xini.setZero();
+        vla_.setZero();
+        vra_.setZero();
+        xcf_.setZero();
+        xt_.setZero();
+        xrot_.setZero();
+        xlw_.setZero();
+        xini_.setZero();
+        fstatic_.setZero();
         time_t myTime;
         time(&myTime);
 #ifdef DEBUG
@@ -246,8 +262,8 @@ namespace dynamicgraph
         
         if(!start_ || stop_ || hold_)
         {
-          pos_ini_.extract(xini);
-          Ryaw.multiply(xini, xrot);
+          pos_ini_.extract(xini_);
+          Ryaw.multiply(xini_, xrot_);
 
           if(!init_)
           {
@@ -266,8 +282,8 @@ namespace dynamicgraph
 #endif
           }
 
-          R.extract(xt);
-          Rinv.multiply(xt, xt_1_local_);
+          R.extract(xt_);
+          Rinv.multiply(xt_, xt_1_local_);
           for(unsigned i=0; i < 3; i++)
           {
             xt_1_(i) = R(i, 3);
@@ -282,16 +298,16 @@ namespace dynamicgraph
 
           t_1_ = inTime;
           lw = pos_ini_;
-          lw(0,3) = qs(0)+xrot(0);
-          lw(1,3) = qs(1)+xrot(1);
+          lw(0,3) = qs(0)+xrot_(0);
+          lw(1,3) = qs(1)+xrot_(1);
           lw(2,3) = qs(2)-0.648703+pos_ini_(2,3);
           f_ini_ = fr;
 
           if(hold_)
           {
             lw = pos_ini_;
-            lw(0, 3) = (3*R(0,3) + (qs(0) +xrot(0)) + 2*xreft_1_(0))/6;
-            lw(1, 3) = ( (qs(1)+xrot(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
+            lw(0, 3) = (3*R(0,3) + (qs(0) +xrot_(0)) + 2*xreft_1_(0))/6;
+            lw(1, 3) = ( (qs(1)+xrot_(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
             lw(2, 3) = (3*R(2,3) + (qs(2)-0.648703+pos_ini_(2,3)) + 2*xreft_1_(2))/6;
 #ifdef DEBUG
             res_ << "**" << inTime << "	" << lw << std::endl;
@@ -316,27 +332,27 @@ namespace dynamicgraph
           if(stop_)
           {
             lw = R;
-            lw(0,3) = ( (qs(0)+xrot(0)) + 3*R(0,3) + 2*xreft_1_(0))/6;
-            lw(1,3) = ( (qs(1)+xrot(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
+            lw(0,3) = ( (qs(0)+xrot_(0)) + 3*R(0,3) + 2*xreft_1_(0))/6;
+            lw(1,3) = ( (qs(1)+xrot_(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
             lw(2,3) = ( (qs(2)-0.648703+pos_ini_(2,3)) + 3*R(2,3) + 2*xreft_1_(2))/6;
 #ifdef DEBUG
             res_ << "~~~~ stopped = " << inTime << "    " << lw << std::endl;
 #endif
           }  
 
-          lw.extract(xlw);
-          Rinv.multiply(xlw, xreft_1_local_);       
+          lw.extract(xlw_);
+          Rinv.multiply(xlw_, xreft_1_local_);
         }
         else if (start_)
         {
           lw = R;
           for(unsigned i=0; i < 3; i++)
           {
-            xt(i) = R(i, 3);
-            xla(i) = la(i, 3);
-            xra(i) = ra(i, 3);
-            vla(i) = 0.0;
-            vra(i) = 0.0;
+            xt_(i) = R(i, 3);
+            xla_(i) = la(i, 3);
+            xra_(i) = ra(i, 3);
+            vla_(i) = 0.0;
+            vra_(i) = 0.0;
           }
 
           int over = 0;
@@ -376,14 +392,14 @@ namespace dynamicgraph
 
           for(unsigned int i=0; i<3; i++)
           {
-            vla(i) = ( xla(i) - xlat_1_(i) )/dt;
-            vra(i) = ( xra(i) - xrat_1_(i) )/dt;
+            vla_(i) = ( xla_(i) - xlat_1_(i) )/dt;
+            vra_(i) = ( xra_(i) - xrat_1_(i) )/dt;
           }
 
 
-          //if( ((fla(0) > 50.0) || (fra(0) > 50.0)) && !walk_)
-          bool floor = ( fabs(xla(2) < 0.10505) && fabs(xra(2) < 0.10505) );
-          if( ((vla(2) > 0.1) || (vra(2) > 0.1)) && ((xla(2) > 0.106) || (xra(2) > 0.106)) && !walk_)
+          //if( ((fla_(0) > 50.0) || (fra_(0) > 50.0)) && !walk_)
+          bool floor = ( fabs(xla_(2) < 0.10505) && fabs(xra_(2) < 0.10505) );
+          if( ((vla_(2) > 0.1) || (vra_(2) > 0.1)) && ((xla_(2) > 0.106) || (xra_(2) > 0.106)) && !walk_)
           {
             walk_ = true;
             walkStop_ = false;
@@ -391,7 +407,7 @@ namespace dynamicgraph
             res_ << "======> Started walking at : " << inTime*0.005 << ", realtime: " << realTime << std::endl;
 #endif
           }
-          else if( ( (((fabs(vla(2))) < 0.0001)&&((fabs(vra(2))) < 0.0001)) || ((fabs(xla(0)-xra(0)) < 0.00001)&&(fabs(vla(0)) < 0.001)) ) && walk_ && floor && (vel(0) ==0.0) )
+          else if( ( (((fabs(vla_(2))) < 0.0001)&&((fabs(vra_(2))) < 0.0001)) || ((fabs(xla_(0)-xra_(0)) < 0.00001)&&(fabs(vla_(0)) < 0.001)) ) && walk_ && floor && (vel(0) ==0.0) )
           {
             walkStop_ = true;
             walk_ = false;
@@ -401,137 +417,135 @@ namespace dynamicgraph
 #endif
           }
 
-          if( (xla(2) < 0.1051) && (xra(2) < 0.1051) && walk_ && !walkStop_)
+          if( (xla_(2) < 0.1051) && (xra_(2) < 0.1051) && walk_ && !walkStop_)
           {
             if(elapsed_ == 0)
               vel_fix_ = vel(0);
 
-            fstatic(0) = vel_fix_*(27000);		//2700
+            fstatic_(0) = vel_fix_*(27000);		//2700
             elapsed_ = elapsed_ + 1;
           }
           else
           {
             elapsed_ = 0;
             for(unsigned i=0; i < 3; i++)
-              fstatic(i) = 0.0;
+              fstatic_(i) = 0.0;
           }
 
+          fr_local_.setZero();  xt_local_.setZero();
+          xcf_world_.setZero(); xw_.setZero(); xw_local_.setZero();
+          Rinv.multiply(fr, fr_local_);
+          Rinv.multiply(xt_, xt_local_);
+          xw_(0) = qs(0);    xw_(1) = qs(1);  xw_(2) = qs(2);
+          Rinv.multiply(xw_, xw_local_);
 
-          Vector xt_local, fr_local, xcf_world, xw_local, xw;
-          fr_local.resize(3);   fr_local.setZero();     xt_local.resize(3);    xt_local.setZero();
-          xcf_world.resize(3);  xcf_world.setZero();    xw.resize(3);   xw_local.resize(3);     xw.setZero();   xw_local.setZero();
-          Rinv.multiply(fr, fr_local);
-          Rinv.multiply(xt, xt_local);
-          xw(0) = qs(0);    xw(1) = qs(1);  xw(2) = qs(2);
-          Rinv.multiply(xw, xw_local);      
-
-          fr_local(1) = 0.0;    
+          fr_local_(1) = 0.0;
           for(unsigned i=0; i < 3; i++)
           {
-            xg(i) = (((dt * dt) / m_ ) * (fr_local(i) - (fd_(i) - fstatic(i)) - ((c_/dt) * (xt_local(i) - xt_1_local_(i))) )) + (2 * xt_local(i)) - xt_1_local_(i);
-            xcf(i) = (xg(i) + (2*xcft_1_(i)) + xcft_2_(i))/4;
-            xct_1_(i) = xg(i);
+            xg_(i) = (((dt * dt) / m_ ) * (fr_local_(i) - (fd_(i) - fstatic_(i)) - ((c_/dt) * (xt_local_(i) - xt_1_local_(i))) )) + (2 * xt_local_(i)) - xt_1_local_(i);
+            vra_(i) = (xg_(i) + (2*xcft_1_(i)) + xcft_2_(i))/4;
+            xct_1_(i) = xg_(i);
             xcft_2_(i) = xcft_1_(i);
-            xcft_1_(i) = xcf(i);
+            xcft_1_(i) = vra_(i);
           }
 
-          Vector xd_local;
-          xd_local.resize(3);   xd_local.setZero();
+
+          xd_local_.setZero();
     
           for(unsigned i=0; i < 3; i++)
-            xd_local(i) = (xcf(i) + xreft_1_local_(i) + xt_local(i))/3;
+            xd_local_(i) = (vra_(i) + xreft_1_local_(i) + xt_local_(i))/3;
 
           //In Y, keep the distance at starting position with the waist, always!!
-          xd_local(1) = dy_ + xw_local(1); 
+          xd_local_(1) = dy_ + xw_local_(1);
 
           //Check limits on the local (waist) frame
-          if( xd_local(0) > (xw_local(0) + 0.20) )
+          if( xd_local_(0) > (xw_local_(0) + 0.20) )
           {
 #ifdef DEBUG
-            res_ << inTime << "	" << "--> dx exceeding max limit!! changing from: " << xd_local(0) << " to xt = " << xw_local(0) + 0.20 << std::endl;
+            res_ << inTime << "	" << "--> dx exceeding max limit!! changing from: " << xd_local_(0) << " to xt = " << xw_local_(0) + 0.20 << std::endl;
 #endif
-            xd_local(0) = xw_local(0) + 0.20;
+            xd_local_(0) = xw_local_(0) + 0.20;
           }
 
-          double sign = fabs(xd_local(0) - xreft_1_local_(0))/(xd_local(0) - xreft_1_local_(0));
-          if( (fabs(xd_local(0) - xreft_1_local_(0)) > max_dx_ ) && ((xla(2) >= 0.1052) || (xra(2) >= 0.1052)) )
+          double sign = fabs(xd_local_(0) - xreft_1_local_(0))/(xd_local_(0) - xreft_1_local_(0));
+          if( (fabs(xd_local_(0) - xreft_1_local_(0)) > max_dx_ ) && ((xla_(2) >= 0.1052) || (xra_(2) >= 0.1052)) )
           {
 #ifdef DEBUG
-            res_ << inTime << "	" << "--> vx exceeding max limit when wlkg!! changing from: " << xd_local(0) << " to xt = " << xreft_1_local_(0) + sign*max_dx_ << ",    vel sign= " << sign << std::endl;
+            res_ << inTime << "	" << "--> vx exceeding max limit when wlkg!! changing from: " << xd_local_(0) << " to xt = " << xreft_1_local_(0) + sign*max_dx_ << ",    vel sign= " << sign << std::endl;
 #endif
-            xd_local(0) = xreft_1_local_(0) + sign*max_dx_;
+            xd_local_(0) = xreft_1_local_(0) + sign*max_dx_;
           }
-          else if( walkStop_ && (fabs(xd_local(0) - xreft_1_local_(0)) > 2*max_dx_) )
+          else if( walkStop_ && (fabs(xd_local_(0) - xreft_1_local_(0)) > 2*max_dx_) )
           {
 #ifdef DEBUG
-            res_ << inTime << "	" << "--> vx exceeding max limit!! changing from: " << xd_local(0) << " to xt = " << xreft_1_local_(0) + sign*2*max_dx_ << ",    vel sign= " << sign << std::endl;
+            res_ << inTime << "	" << "--> vx exceeding max limit!! changing from: " << xd_local_(0) << " to xt = " << xreft_1_local_(0) + sign*2*max_dx_ << ",    vel sign= " << sign << std::endl;
 #endif
-            xd_local(0) = xreft_1_local_(0) + sign*2*max_dx_;
+            xd_local_(0) = xreft_1_local_(0) + sign*2*max_dx_;
           }  
 
           double z;
-          if(xt_local(2) > xreft_1_local_(2))
-            z = xt_local(2);
+          if(xt_local_(2) > xreft_1_local_(2))
+            z = xt_local_(2);
           else
             z = xreft_1_local_(2);
 
-          sign = fabs(xd_local(2) - z)/(xd_local(2) - z);
+          sign = fabs(xd_local_(2) - z)/(xd_local_(2) - z);
           if( inTime > 1)
           {
-            if( ((xd_local(2) < 0.695) || (xd_local(2) > 0.80)) && ((xla(2) >= 0.1052) || (xra(2) >= 0.01052) ))
+            if( ((xd_local_(2) < 0.695) || (xd_local_(2) > 0.80)) && ((xla_(2) >= 0.1052) || (xra_(2) >= 0.01052) ))
             {
-              xd_local(2) = (xt(2) + 2*xreft_1_local_(2))/3;   
+              xd_local_(2) = (xt_(2) + 2*xreft_1_local_(2))/3;
 #ifdef DEBUG
-              res_ << "--> Z below 0.695 or over 0.730 while wkg, chaging z -> " << xd_local(2) << std::endl;
+              res_ << "--> Z below 0.695 or over 0.730 while wkg, chaging z -> " << xd_local_(2) << std::endl;
 #endif
             }  
-            else if(((xd_local(2) < 0.65) || (xd_local(2) > 0.80)))
+            else if(((xd_local_(2) < 0.65) || (xd_local_(2) > 0.80)))
             {
-              xd_local(2) = xreft_1_local_(2);
+              xd_local_(2) = xreft_1_local_(2);
 #ifdef DEBUG
-              res_ << "----> Z below 0.65 or over 0.80, changing z to previous value -> " << xd_local(2) << std::endl;
+              res_ << "----> Z below 0.65 or over 0.80, changing z to previous value -> " << xd_local_(2) << std::endl;
 #endif
             }
           }
                                     // max dz
-          if( (fabs(xd_local(2) - z) > 0.0015) &&  walk_)
+          if( (fabs(xd_local_(2) - z) > 0.0015) &&  walk_)
           {
             if( ((z + sign*0.0015) > 0.695) && ((z + sign*0.0015) < 0.80) )
-              xd_local(2) = z + sign*0.0015;
+              xd_local_(2) = z + sign*0.0015;
             else if((z + sign*0.0015) < 0.695)
-              xd_local(2) = 0.695;
+              xd_local_(2) = 0.695;
             else
-              xd_local(2) = 0.80;
+              xd_local_(2) = 0.80;
 #ifdef DEBUG
-            res_ << "--> vz exceeding max limit when wlkg!! changing to xt= " << xd_local(2) << ",    vel sign= " << sign << std::endl;
+            res_ << "--> vz exceeding max limit when wlkg!! changing to xt_= " << xd_local_(2) << ",    vel sign= " << sign << std::endl;
 #endif
           }
-          else if( (fabs(xd_local(2) - z) > 0.003) )
+          else if( (fabs(xd_local_(2) - z) > 0.003) )
           {
             if( ((z + sign*0.003) > 0.65) && ((z + sign*0.003) < 0.80) )
-              xd_local(2) = z + sign*0.003;
+              xd_local_(2) = z + sign*0.003;
             else if((z + sign*0.0015) < 0.65)
-              xd_local(2) = 0.65;
+              xd_local_(2) = 0.65;
             else
-              xd_local(2) = 0.80;
+              xd_local_(2) = 0.80;
 #ifdef DEBUG
-            res_ << "--> vz exceeding max limit!! changing to xt= " << xd_local(2) << ",    vel sign= " << sign << std::endl;
+            res_ << "--> vz exceeding max limit!! changing to xt_= " << xd_local_(2) << ",    vel sign= " << sign << std::endl;
 #endif
           }
 
           //Go back to the world frame
-          Ryaw.multiply(xd_local, xcf_world);
+          Ryaw.multiply(xd_local_, xcf_world_);
 
           for(unsigned i=0; i < 3; i++)
-            imp(i) = ((m_ / (dt * dt) ) * (xg(i) - (2*xt_local(i)) + xt_1_local_(i) )) + ( (c_/dt) * (xt_local(i) - xt_1_local_(i)) );
+            imp_(i) = ((m_ / (dt * dt) ) * (xg_(i) - (2*xt_local_(i)) + xt_1_local_(i) )) + ( (c_/dt) * (xt_local_(i) - xt_1_local_(i)) );
 
-          df = fd_ - fstatic;     
+          df_ = fd_ - fstatic_;
                
           for(unsigned i=0; i < 3; i++)
-            lw(i, 3) =  xcf_world(i);       // + xreft_1_(i) )/2;        // + xt(i) )/3;
+            lw(i, 3) =  xcf_world_(i);       // + xreft_1_(i) )/2;        // + xt_(i) )/3;
 
-          pos_ini_.extract(xini);
-          Ryaw.multiply(xini, xrot);         
+          pos_ini_.extract(xini_);
+          Ryaw.multiply(xini_, xrot_);
 
 #ifdef DEBUG
           force_ << (inTime*0.005) << "	" << inTime;
@@ -545,50 +559,50 @@ namespace dynamicgraph
           force_  << "	" << realTime << std::endl;
 
           res_ << inTime << "	" << realTime << "	|" << qs(0) << ", "  << qs(1) << "|	" << lw << std::endl;
-          res_ << "--   xrot: " << xrot << ", xcf: " << xcf << "  xcf_w: " << xcf_world << std::endl;   //"   xw: " << xw << std::endl;
+          res_ << "--   xrot_: " << xrot_ << ", vra_: " << vra_ << "  xcf_w: " << xcf_world_ << std::endl;   //"   xw_: " << xw_ << std::endl;
           check_ << inTime << "	";
 #endif
 #ifdef DEBUG      
           double ccx = (c_/dt) * (xt_local(0) - xt_1_local_(0)), ccz = (c_/dt) * (xt_local(2) - xt_1_local_(2));
           double ddx = (2 * xt_local(0)) - xt_1_local_(0), ddz = (2 * xt_local(2)) - xt_1_local_(2);
-          double mdx = (((dt * dt) / m_ ) * (fr_local(0) - (fd_(0) - fla(0) - fra(0)) - ccx));
-          double mdz = (((dt * dt) / m_ ) * (fr_local(2) - (fd_(2) - fla(2) - fra(2)) - ccz));
-	  check_<< fla(0)<< "	" << fra(0)<< "	" << fr_local(0) - fd_(0)<< "	" << ccx << "	" << ddx << "	" << mdx << "	";
-          check_<< fla(2)<< "	" << fra(2)<< "	" << fr_local(2) - fd_(2)<< "	" << ccz << "	" << ddz << "	" << mdz << "	" << realTime << std::endl;
+          double mdx = (((dt * dt) / m_ ) * (fr_local_(0) - (fd_(0) - fla_(0) - fra_(0)) - ccx));
+          double mdz = (((dt * dt) / m_ ) * (fr_local_(2) - (fd_(2) - fla_(2) - fra_(2)) - ccz));
+      check_<< fla_(0)<< "	" << fra_(0)<< "	" << fr_local_(0) - fd_(0)<< "	" << ccx << "	" << ddx << "	" << mdx << "	";
+          check_<< fla_(2)<< "	" << fra_(2)<< "	" << fr_local_(2) - fd_(2)<< "	" << ccz << "	" << ddz << "	" << mdz << "	" << realTime << std::endl;
 
-          pos_ << inTime << "	" << imp(0) << "	" << imp(1) << "	" << imp(2);
-          pos_ << "	" << df(0) << "	" << df(1) << "	" << df(2);
+          pos_ << inTime << "	" << imp_(0) << "	" << imp_(1) << "	" << imp_(2);
+          pos_ << "	" << df_(0) << "	" << df_(1) << "	" << df_(2);
           pos_ << "	" << realTime << std::endl;
 #endif
-          pos_ini_.extract(xini);
-          xrot.setZero();
-          Ryaw.multiply(xini, xrot);
+          pos_ini_.extract(xini_);
+          xrot_.setZero();
+          Ryaw.multiply(xini_, xrot_);
 #ifdef DEBUG
           wrist_ << inTime;
           for(unsigned k=0; k < 3; ++k)
-            wrist_ << "	" << xt(k) << "	" << lw(k, 3) << "	" << xt_local(k);   //xcf_world(k);
+            wrist_ << "	" << xt_(k) << "	" << lw(k, 3) << "	" << xt_local(k);   //xcf_world_(k);
 
-          wrist_ << "	" << xla(0) << "	" << xg(0) << "	" << xla(1) << "	" << xd_local(1);
-          wrist_ << "	" << xla(2) << "	" << xg(2) << "	" << qs(0)+xrot(0) << "	" << qs(1)+xrot(1) << "	" << realTime << std::endl;
+          wrist_ << "	" << xla_(0) << "	" << xg_(0) << "	" << xla_(1) << "	" << xd_local_(1);
+          wrist_ << "	" << xla_(2) << "	" << xg_(2) << "	" << qs(0)+xrot_(0) << "	" << qs(1)+xrot_(1) << "	" << realTime << std::endl;
 #endif
           lwct_1_ = lw;
           xlat_2_ = xlat_1_;
-          xlat_1_ = xla;
+          xlat_1_ = xla_;
           xrat_2_ = xrat_1_;
-          xrat_1_ = xra;
+          xrat_1_ = xra_;
 
-          xt_1_ = xt;
-          xt_1_local_ = xt_local;
-          xreft_1_local_ = xd_local;
+          xt_1_ = xt_;
+          xt_1_local_ = xt_local_;
+          xreft_1_local_ = xd_local_;
         }
 
         if( start_ && ((fabs(fr(0)) < 2.0) && (fabs(fr(1)) < 2.0 )) && (fr(2) > -12.0) && (fr(2) < -10.0))
         {
-          pos_ini_.extract(xini);
-          xrot.setZero();
-          Ryaw.multiply(xini, xrot);
-          lw(0,3) = ((qs(0)+xrot(0)) + xreft_1_(0) + R(0,3))/3;
-          lw(1,3) = ((qs(1) + xrot(1)) + xreft_1_(1) + R(1,3))/3;
+          pos_ini_.extract(xini_);
+          xrot_.setZero();
+          Ryaw.multiply(xini_, xrot_);
+          lw(0,3) = ((qs(0)+xrot_(0)) + xreft_1_(0) + R(0,3))/3;
+          lw(1,3) = ((qs(1) + xrot_(1)) + xreft_1_(1) + R(1,3))/3;
           lw(2,3) = ((qs(2)-0.648703+pos_ini_(2,3)) + 2*xreft_1_(2) + 3*R(2,3))/6;
 #ifdef DEBUG
           res_ << "~~~~ " << inTime << ", fr = " << fr << ",    xref = " << xreft_1_ << std::endl;
@@ -600,13 +614,13 @@ namespace dynamicgraph
 
         //Rotate posture of lw as the waist yaw
         la.extract(Ryaw);
-        lw.extract(xlw);
+        lw.extract(xlw_);
         pos_ini_.extract(Rlw);
         Ryaw.multiply(Rlw, Rrot);
-        lw.buildFrom(Rrot, xlw);
+        lw.buildFrom(Rrot, xlw_);
 
         lw.extract(xreft_1_);
-        //Rinv.multiply(xlw, xreft_1_local_);
+        //Rinv.multiply(xlw_, xreft_1_local_);
 #ifdef DEBUG
         res_ << inTime << "	" << "++++++ ref local = " << xreft_1_local_ << std::endl;
 #endif
@@ -618,9 +632,6 @@ namespace dynamicgraph
         const Vector& force = forceSOUT.access(inTime);
         const Vector& qs = postureSIN(inTime);
         bool change = false;
-        int tam = qs.size();
-        Vector qt;
-        qt.resize(tam);
 
         if(!start_)
           q0_ = qs;
@@ -633,29 +644,29 @@ namespace dynamicgraph
 
         if(change && !hold_)
         {
-          qt = q0_;
+          qt_ = q0_;
           //  Keep only the most recent position & orientation of the waist
           for(unsigned i=0; i < 6; i++)
-            qt(i) = qs(i);
+            qt_(i) = qs(i);
 
-          qt(28) = 0.75;
-          qt(35) = 0.75;
-          q = qt;
+          qt_(28) = 0.75;
+          qt_(35) = 0.75;
+          q = qt_;
           hold();
         }
         else if(hold_ || open_)
         {
-          qt = qs;
-          qt(28) = 0.75;
-          qt(35) = 0.75;
-          q = qt;
+          qt_ = qs;
+          qt_(28) = 0.75;
+          qt_(35) = 0.75;
+          q = qt_;
         }
         else if(close_)
         {
-          qt = qs;
-          qt(28) = 0.15;
-          qt(35) = 0.15;
-          q = qt;
+          qt_ = qs;
+          qt_(28) = 0.15;
+          qt_(35) = 0.15;
+          q = qt_;
         }
         else
           q = qs;
@@ -667,43 +678,40 @@ namespace dynamicgraph
       {
         const Vector& fin = forceSIN(inTime);
         const MatrixHomogeneous& R = lwSIN(inTime);
-        MatrixRotation MRot;
-        Vector fR, ff, ft;
-        fR.resize(3);	ft.resize(3);
-        fR.setZero();
-        ff.resize(3);	force.resize(3);
+        force.resize(3);
+        ff_.setZero(); fR_.setZero(); ft_.setZero();
 
         if (inTime != tf_1_)
         {
-          ft(2) = fin(2);
-          ft(0) = -fin(1);
-          ft(1) = fin(0);
-          R.extract (MRot);
-          MRot.multiply (ft, fR);
+          ft_(2) = fin(2);
+          ft_(0) = -fin(1);
+          ft_(1) = fin(0);
+          R.extract (MRot_);
+          MRot_.multiply (ft_, fR_);
 
           if( (ff_2_(2) == 0.0) && (ff_1_(2) == 0))
           {
             for(unsigned i=0; i < 3; i++)
             {
-              ff_1_(i) = fR(i);
-              ff_2_(i) = fR(i);
-              fRt_1_(i) = fR(i);
-              fRt_2_(i) = fR(i);
+              ff_1_(i) = fR_(i);
+              ff_2_(i) = fR_(i);
+              fRt_1_(i) = fR_(i);
+              fRt_2_(i) = fR_(i);
             }
 #ifdef DEBUG
-            res_ << "f0: " << fR << ", " << ff_2_ << std::endl;
+            res_ << "f0: " << fR_ << ", " << ff_2_ << std::endl;
 #endif
           }
 
           for(unsigned i=0; i < 3; i++)
           {
-            fraw_(i) = fR(i);
-            ff(i) = (0.00024136*fR(i)) + (0.00048272*fRt_1_(i)) + (0.00024136*fRt_2_(i)) + (1.95557824*ff_1_(i)) - (0.95654368*ff_2_(i));
+            fraw_(i) = fR_(i);
+            ff_(i) = (0.00024136*fR_(i)) + (0.00048272*fRt_1_(i)) + (0.00024136*fRt_2_(i)) + (1.95557824*ff_1_(i)) - (0.95654368*ff_2_(i));
             ff_2_(i) = ff_1_(i);
-            ff_1_(i) = ff(i);
+            ff_1_(i) = ff_(i);
             fRt_2_(i) = fRt_1_(i);
-            fRt_1_(i) = fR(i);
-            force(i) = ff(i);
+            fRt_1_(i) = fR_(i);
+            force(i) = ff_(i);
           }
 
           tf_1_ = inTime;

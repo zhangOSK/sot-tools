@@ -47,7 +47,7 @@ namespace dynamicgraph
         postureSOUT(forceSIN << postureSIN, "ImpedanceController("+inName+")::output(vector)::postureOUT"),
         forceSOUT(forceSIN << lwSIN, "ImpedanceController("+inName+")::output(vector)::leftWristForce"),
         m_(1.00), c_(5.0), mx_(20), cx_(100), max_dx_(0.005), dist_(0.0), vel_fix_(0.0), t_1_(0), tf_1_(0), elapsed_(0),
-        start_(false), stop_(false), hold_(false), init_(false), walk_(false), walkStop_(false), open_(false), close_(false), iniTime_(std::tm())
+        start_(false), stop_(false), hold_(false), init_(false), walk_(false), walkStop_(false), open_(false), close_(false)
       {
         // Register signals into the entity.
         signalRegistration (forceSIN);
@@ -60,38 +60,13 @@ namespace dynamicgraph
         signalRegistration (postureSIN);
         signalRegistration (forceSOUT);
 
-        ff_.resize(3); fR_.resize(3); ft_.resize(3);
+        
 
-        xd_local_.resize(3);
-        fr_local_.resize(3);
-        xcf_world_.resize(3);
-        xt_local_.resize(3);
-        xw_.resize(3);
-        xw_local_.resize(3);
+        fraw_.setZero();    ff_1_.setZero();	ff_2_.setZero();    xt_1_local_.setZero();
+        xcft_1_.setZero();  fRt_1_.setZero();	fRt_2_.setZero();	xcft_2_.setZero();
+        xreft_1_.setZero(); fd_.setZero();      xct_1_.setZero();	xlat_1_.setZero();
+        xlat_2_.setZero();	xrat_1_.setZero();  xrat_2_.setZero();  xreft_1_local_.setZero();
 
-        xt_.resize(3);  xg_.resize(3);
-        imp_.resize(3); df_.resize(3);
-        xla_.resize(3); xra_.resize(3);
-        fla_.resize(3); fra_.resize(3); fstatic_.resize(3);
-        vla_.resize(3); vra_.resize(3); xcf_.resize(3);
-        xlw_.resize(3); xrot_.resize(3);
-        xini_.resize(3);
-
-        xt_1_.resize(3);	fraw_.resize(3);	fraw_.setZero();
-        ff_1_.resize(3);	ff_2_.resize(3);    xt_1_local_.resize(3);
-        ff_1_.setZero();	ff_2_.setZero();    xt_1_local_.setZero();
-        xcft_1_.resize(3);		xcft_1_.setZero();
-        fRt_1_.resize(3);	fRt_2_.resize(3);	xcft_2_.resize(3);
-        fRt_1_.setZero();	fRt_2_.setZero();	xcft_2_.setZero();
-        xreft_1_.resize(3);	xreft_1_.setZero();
-        fd_.resize(3);		fd_.setZero();
-        xct_1_.resize(3);
-        xct_1_.setZero();	xlat_1_.resize(3);
-        xlat_2_.resize(3);	xlat_1_.setZero();
-        xlat_2_.setZero();	xrat_1_.resize(3);
-        xrat_2_.resize(3);	xrat_1_.setZero();
-        xrat_2_.setZero();
-        xreft_1_local_.resize(3);   xreft_1_local_.setZero();
         // longer hose (1.25 times longHose) = 11.34 -> 8.84 (MLJ), longest Hose (1.5 times longHose) = 13.64 -> 10.64 (MLJ)
         double massHose = 7.04; //full hose: 9.04 -> 7.04 (massless joints MLJ), heavy = 13.56, light = 4.52 (50% fullHose), semi-light = 6.78 (75% of fullHose),  coiled hose: 13.197
         double part = 0.32;   // 0.32 for longHose // 0.3 for heavy-longHose //Hold part % of the total weight of the Hose
@@ -108,21 +83,16 @@ namespace dynamicgraph
 //        -6.28389e-06	-3.9016e-07	1	0.648703
 //        0	0	0	1
 
-        // pos_ini_ should be the position of the left wrist in half sitting for hrp2-14
+        // pos_ini_ should be the position of the left wrist in half sitting for hrp2
         //LEFT-WRIST
-        pos_ini_(0,0) = 0.963962  ; pos_ini_(0,1) =0.0449441; pos_ini_(0,2) =-0.262218 ; pos_ini_(0,3) =0.0418365;
-        pos_ini_(1,0) = -0.0868231; pos_ini_(1,1) =0.984808 ; pos_ini_(1,2) =-0.150382 ; pos_ini_(1,3) =0.331007 ;
-        pos_ini_(2,0) = 0.251475  ; pos_ini_(2,1) =0.167729 ; pos_ini_(2,2) =0.953219  ; pos_ini_(2,3) =0.704286 ;
-        pos_ini_(3,0) = 0	      ; pos_ini_(3,1) =0	    ; pos_ini_(3,2) =0	       ; pos_ini_(3,3) =1        ;
+        pos_ini_ = Eigen::MatrixXd::Zero(3, 3);
+        pos_ini_(0,0) = 0.963962  ; pos_ini_(0,1) =0.0449441; pos_ini_(0,2) =-0.262218 ; //pos_ini_(0,3) =0.0418365;
+        pos_ini_(1,0) = -0.0868231; pos_ini_(1,1) =0.984808 ; pos_ini_(1,2) =-0.150382 ; //pos_ini_(1,3) =0.331007 ;
+        pos_ini_(2,0) = 0.251475  ; pos_ini_(2,1) =0.167729 ; pos_ini_(2,2) =0.953219  ; //pos_ini_(2,3) =0.704286 ;
+        //pos_ini_(3,0) = 0	      ; pos_ini_(3,1) =0	    ; pos_ini_(3,2) =0	       ; pos_ini_(3,3) =1        ;
 
-//        pos_ini_(0,0) = 0.922498;      pos_ini_(0,1) = 0.0287972;      pos_ini_(0,2) = -0.384925;      pos_ini_(0,3) = 0.149084;
-//        pos_ini_(1,0) = -0.106533;      pos_ini_(1,1) = 0.977476;       pos_ini_(1,2) = -0.182185;      pos_ini_(1,3) = 0.40; //0.350307;
-//        pos_ini_(2,0) = 0.371009;       pos_ini_(2,1) = 0.209073;       pos_ini_(2,2) = 0.904788;       pos_ini_(2,3) = 0.698064;
-//        pos_ini_(3,0) = 0;      pos_ini_(3,1) = 0;      pos_ini_(3,2) = 0;      pos_ini_(3,3) = 1;
+        xini_(0) = 0.0418365;   xini_(1) = 0.331007 ;   xini_(2) = 0.704286 ;
 
-        iniTime_.tm_hour = 10;	iniTime_.tm_min = 30;	iniTime_.tm_sec = 0;
-        iniTime_.tm_year = 115;	iniTime_.tm_mon = 11;	iniTime_.tm_mday = 15;
-        // year counted from 1900
 
 #ifdef DEBUG
         wrist_.open("/tmp/WristPos.txt", std::ios::out);
@@ -136,9 +106,7 @@ namespace dynamicgraph
         res_ << "----> Fd: " << fd_ << std::endl;
         res_ << "----> Controller: m = " << m_ << ",  c = " << c_ << ", times m: " << mx_ << ", times c: " << cx_ << std::endl;
 #endif
-        // Define refresh function for output signal
-        //boost::function2<double&, double&,const int&> ftest
-        //= boost::bind(&ImpedanceController::computeControlOutput, this, _1, _2);
+
 
         lwSOUT.setFunction (boost::bind(&ImpedanceController::computeControlOutput, this, _1, _2));
 
@@ -250,109 +218,94 @@ namespace dynamicgraph
         xlw_.setZero();
         xini_.setZero();
         fstatic_.setZero();
-        time_t myTime;
-        time(&myTime);
-#ifdef DEBUG
-        double realTime = difftime(myTime, mktime(&iniTime_));
-#endif
-        MatrixRotation Ryaw, Rlw, Rrot, Rinv;
 
-        la.extract(Ryaw);
-        Ryaw.inverse(Rinv);
+        Eigen::MatrixXd Ryaw, Rlw, Rrot, Rinv;
+        Eigen::Vector3d flw = Eigen::Vector3d( fr(0), fr(1), fr(2) );
+
+        Ryaw = extractMatrix(la);
+        Rinv = Ryaw.inverse();
         
         if(!start_ || stop_ || hold_)
         {
-          pos_ini_.extract(xini_);
-          Ryaw.multiply(xini_, xrot_);
+          xrot_ = Ryaw * xini_;
 
           if(!init_)
           {
             // Save the distance from wrist to the  waist at the starting position
             dy_ = R(1, 3)-qs(1);
-            lw_initial_ = R;
-            for(unsigned i=0; i < 3; i++)
-              xreft_1_(i) = R(i, 3);
+            xreft_1_ = extractVector(R);
 
             init_ = true;
-            f_ini_ = fr;
+            //f_ini_ = Eigen::Vector3d(fr(0), fr(1), fr(2));
 #ifdef DEBUG
             res_ << "----->>> dy = " << dy_ << std::endl;
-            res_ << "===>>> lw ini = " << lw_initial_ << std::endl;
-            res_ << "===>>> fr ini = " << f_ini_ << std::endl;
+           // res_ << "===>>> fr ini = " << f_ini_ << std::endl;
 #endif
           }
 
-          R.extract(xt_);
-          Rinv.multiply(xt_, xt_1_local_);
-          for(unsigned i=0; i < 3; i++)
-          {
-            xt_1_(i) = R(i, 3);
-            xct_1_(i) = R(i, 3);
-            xlat_1_(i) = la(i, 3);
-            xlat_2_(i) = la(i, 3);
-            xrat_1_(i) = ra(i, 3);
-            xrat_2_(i) = ra(i, 3);
-            xcft_1_(i) = xct_1_(i);
-            xcft_2_(i) = xct_1_(i);
-          }
+          xt_ = extractVector(R);
+          xt_1_local_  = Rinv * xt_;
 
-          t_1_ = inTime;
-          lw = pos_ini_;
+          xt_1_ = extractVector(R);
+          xct_1_ = xt_1_;
+          xlat_1_ = extractVector(la);
+          xlat_2_ = xlat_1_;
+          xrat_1_ = extractVector(ra);
+          xrat_2_ = xrat_1_;
+          xcft_1_ = xct_1_;
+          xcft_2_ = xct_1_;
+          
+          lw = buildfrom(xini_, pos_ini_);
+         
           lw(0,3) = qs(0)+xrot_(0);
           lw(1,3) = qs(1)+xrot_(1);
-          lw(2,3) = qs(2)-0.648703+pos_ini_(2,3);
-          f_ini_ = fr;
+          lw(2,3) = qs(2)-0.648703+xini_(2);
+          //f_ini_ = fr;
 
           if(hold_)
           {
-            lw = pos_ini_;
             lw(0, 3) = (3*R(0,3) + (qs(0) +xrot_(0)) + 2*xreft_1_(0))/6;
             lw(1, 3) = ( (qs(1)+xrot_(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
-            lw(2, 3) = (3*R(2,3) + (qs(2)-0.648703+pos_ini_(2,3)) + 2*xreft_1_(2))/6;
+            lw(2, 3) = (3*R(2,3) + (qs(2)-0.648703+xini_(2)) + 2*xreft_1_(2))/6;
 #ifdef DEBUG
             res_ << "**" << inTime << "	" << lw << std::endl;
             wrist_ << inTime;
-#endif
+
             for(unsigned k=0; k < 3; ++k)
-            {
-#ifdef DEBUG
               wrist_ << "	" << R(k, 3) << "	" << lw(k, 3) << "	0.001" ;
-#endif
-              xt_1_(k) = R(k, 3);
-              xreft_1_(k) = lw(k, 3);
-            }
-#ifdef DEBUG
+
             wrist_ << "	" << la(0, 3) << "	" << ra(0, 3) << "	" << la(1, 3) << "	" << ra(1, 3);
             wrist_ << "	" << la(2, 3) << "	" << ra(2, 3) << "	0.001	0.001	" << realTime << std::endl;
 #endif
 
+            xt_1_ = extractVector(R);
+            xreft_1_ = extractVector(lw);
+
           }
-          lwct_1_ = R;
 
           if(stop_)
           {
             lw = R;
             lw(0,3) = ( (qs(0)+xrot_(0)) + 3*R(0,3) + 2*xreft_1_(0))/6;
             lw(1,3) = ( (qs(1)+xrot_(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
-            lw(2,3) = ( (qs(2)-0.648703+pos_ini_(2,3)) + 3*R(2,3) + 2*xreft_1_(2))/6;
+            lw(2,3) = ( (qs(2)-0.648703+xini_(2)) + 3*R(2,3) + 2*xreft_1_(2))/6;
 #ifdef DEBUG
             res_ << "~~~~ stopped = " << inTime << "    " << lw << std::endl;
 #endif
           }  
 
-          lw.extract(xlw_);
-          Rinv.multiply(xlw_, xreft_1_local_);
+          xlw_= extractVector(lw);
+          xreft_1_local_ = Rinv * xlw_;
         }
         else if (start_)
         {
           lw = R;
+
           for(unsigned i=0; i < 3; i++)
           {
             xt_(i) = R(i, 3);
             xla_(i) = la(i, 3);
             xra_(i) = ra(i, 3);
-            vla_(i) = 0.0;
-            vra_(i) = 0.0;
           }
 
           int over = 0;
@@ -373,7 +326,7 @@ namespace dynamicgraph
 
           ///Update desired force depending on distance to the reel
          //----Experiment----------------------------------------------
- /*         dist_ = xt(0) - pos_ini_(0,3);
+ /*         dist_ = xt(0) - xini_(0);
           double massHose = dist_*1.8;      //Real hose mass = 1.8 kg/m
           fd_(0) = f_ini_(0) + (0.5 * massHose * (-9.8));
           if(dist_ < 1.5)
@@ -383,7 +336,7 @@ namespace dynamicgraph
           //--------------------------------------------------
 
           //---Simulation-------------------------------
-          //dist_ = (xt(0) - pos_ini_(0,3))+2.0;
+          //dist_ = (xt(0) - xini_(0))+2.0;
           massHose = dist_*1.8;       
           fd_(0) = f_ini_(0) + (0.5 * (0.15 * massHose) * (-9.8));
           fd_(2) = f_ini_(2) + (0.05 * massHose * (-9.8) );
@@ -428,30 +381,25 @@ namespace dynamicgraph
           else
           {
             elapsed_ = 0;
-            for(unsigned i=0; i < 3; i++)
-              fstatic_(i) = 0.0;
+            fstatic_.setZero();
           }
 
           fr_local_.setZero();  xt_local_.setZero();
           xcf_world_.setZero(); xw_.setZero(); xw_local_.setZero();
-          Rinv.multiply(fr, fr_local_);
-          Rinv.multiply(xt_, xt_local_);
+          fr_local_ = Rinv * flw;    //          Rinv.multiply(fr, fr_local_);
+          xt_local_ = Rinv * xt_;      //  Rinv.multiply(xt_, xt_local_);
           xw_(0) = qs(0);    xw_(1) = qs(1);  xw_(2) = qs(2);
-          Rinv.multiply(xw_, xw_local_);
+          xw_local_ = Rinv * xw_;
 
           fr_local_(1) = 0.0;
-          for(unsigned i=0; i < 3; i++)
-          {
-            xg_(i) = (((dt * dt) / m_ ) * (fr_local_(i) - (fd_(i) - fstatic_(i)) - ((c_/dt) * (xt_local_(i) - xt_1_local_(i))) )) + (2 * xt_local_(i)) - xt_1_local_(i);
-            vra_(i) = (xg_(i) + (2*xcft_1_(i)) + xcft_2_(i))/4;
-            xct_1_(i) = xg_(i);
-            xcft_2_(i) = xcft_1_(i);
-            xcft_1_(i) = vra_(i);
-          }
+          
+          xg_ = (((dt * dt) / m_ ) * (fr_local_ - (fd_ - fstatic_) - ((c_/dt) * (xt_local_ - xt_1_local_)) )) + (2 * xt_local_) - xt_1_local_;
+          vra_ = (xg_ + (2*xcft_1_) + xcft_2_)/4;
+          xct_1_ = xg_;
+          xcft_2_ = xcft_1_;
+          xcft_1_ = vra_;
 
-
-          xd_local_.setZero();
-    
+          xd_local_.setZero();  
           for(unsigned i=0; i < 3; i++)
             xd_local_(i) = (vra_(i) + xreft_1_local_(i) + xt_local_(i))/3;
 
@@ -534,20 +482,20 @@ namespace dynamicgraph
           }
 
           //Go back to the world frame
-          Ryaw.multiply(xd_local_, xcf_world_);
-
-          for(unsigned i=0; i < 3; i++)
-            imp_(i) = ((m_ / (dt * dt) ) * (xg_(i) - (2*xt_local_(i)) + xt_1_local_(i) )) + ( (c_/dt) * (xt_local_(i) - xt_1_local_(i)) );
-
-          df_ = fd_ - fstatic_;
+          xcf_world_ = Ryaw * xd_local_;
                
           for(unsigned i=0; i < 3; i++)
             lw(i, 3) =  xcf_world_(i);       // + xreft_1_(i) )/2;        // + xt_(i) )/3;
 
-          pos_ini_.extract(xini_);
-          Ryaw.multiply(xini_, xrot_);
 
 #ifdef DEBUG
+          for(unsigned i=0; i < 3; i++)
+            imp_(i) = ((m_ / (dt * dt) ) * (xg_(i) - (2*xt_local_(i)) + xt_1_local_(i) )) + ( (c_/dt) * (xt_local_(i) - xt_1_local_(i)) );
+
+          df_ = fd_ - fstatic_;
+
+          xrot_ = Ryaw * xini_;
+
           force_ << (inTime*0.005) << "	" << inTime;
           for(unsigned k=0; k < 3; ++k)
             force_ << "	" << fr(k);
@@ -555,29 +503,22 @@ namespace dynamicgraph
           for(unsigned k=0; k < 3; ++k)
             force_ << "	" << fraw_(k);
 
-
-          force_  << "	" << realTime << std::endl;
-
+          //force_  << "	" << realTime << std::endl;
           res_ << inTime << "	" << realTime << "	|" << qs(0) << ", "  << qs(1) << "|	" << lw << std::endl;
           res_ << "--   xrot_: " << xrot_ << ", vra_: " << vra_ << "  xcf_w: " << xcf_world_ << std::endl;   //"   xw_: " << xw_ << std::endl;
           check_ << inTime << "	";
-#endif
-#ifdef DEBUG      
+   
           double ccx = (c_/dt) * (xt_local(0) - xt_1_local_(0)), ccz = (c_/dt) * (xt_local(2) - xt_1_local_(2));
           double ddx = (2 * xt_local(0)) - xt_1_local_(0), ddz = (2 * xt_local(2)) - xt_1_local_(2);
           double mdx = (((dt * dt) / m_ ) * (fr_local_(0) - (fd_(0) - fla_(0) - fra_(0)) - ccx));
           double mdz = (((dt * dt) / m_ ) * (fr_local_(2) - (fd_(2) - fla_(2) - fra_(2)) - ccz));
-      check_<< fla_(0)<< "	" << fra_(0)<< "	" << fr_local_(0) - fd_(0)<< "	" << ccx << "	" << ddx << "	" << mdx << "	";
+          check_<< fla_(0)<< "	" << fra_(0)<< "	" << fr_local_(0) - fd_(0)<< "	" << ccx << "	" << ddx << "	" << mdx << "	";
           check_<< fla_(2)<< "	" << fra_(2)<< "	" << fr_local_(2) - fd_(2)<< "	" << ccz << "	" << ddz << "	" << mdz << "	" << realTime << std::endl;
 
           pos_ << inTime << "	" << imp_(0) << "	" << imp_(1) << "	" << imp_(2);
           pos_ << "	" << df_(0) << "	" << df_(1) << "	" << df_(2);
           pos_ << "	" << realTime << std::endl;
-#endif
-          pos_ini_.extract(xini_);
-          xrot_.setZero();
-          Ryaw.multiply(xini_, xrot_);
-#ifdef DEBUG
+
           wrist_ << inTime;
           for(unsigned k=0; k < 3; ++k)
             wrist_ << "	" << xt_(k) << "	" << lw(k, 3) << "	" << xt_local(k);   //xcf_world_(k);
@@ -585,7 +526,7 @@ namespace dynamicgraph
           wrist_ << "	" << xla_(0) << "	" << xg_(0) << "	" << xla_(1) << "	" << xd_local_(1);
           wrist_ << "	" << xla_(2) << "	" << xg_(2) << "	" << qs(0)+xrot_(0) << "	" << qs(1)+xrot_(1) << "	" << realTime << std::endl;
 #endif
-          lwct_1_ = lw;
+
           xlat_2_ = xlat_1_;
           xlat_1_ = xla_;
           xrat_2_ = xrat_1_;
@@ -598,12 +539,11 @@ namespace dynamicgraph
 
         if( start_ && ((fabs(fr(0)) < 2.0) && (fabs(fr(1)) < 2.0 )) && (fr(2) > -12.0) && (fr(2) < -10.0))
         {
-          pos_ini_.extract(xini_);
           xrot_.setZero();
-          Ryaw.multiply(xini_, xrot_);
+          xrot_ = Ryaw * xini_;
           lw(0,3) = ((qs(0)+xrot_(0)) + xreft_1_(0) + R(0,3))/3;
           lw(1,3) = ((qs(1) + xrot_(1)) + xreft_1_(1) + R(1,3))/3;
-          lw(2,3) = ((qs(2)-0.648703+pos_ini_(2,3)) + 2*xreft_1_(2) + 3*R(2,3))/6;
+          lw(2,3) = ((qs(2)-0.648703+xini_(2)) + 2*xreft_1_(2) + 3*R(2,3))/6;
 #ifdef DEBUG
           res_ << "~~~~ " << inTime << ", fr = " << fr << ",    xref = " << xreft_1_ << std::endl;
           res_ << "~~~~ final = " << lw << std::endl;
@@ -613,14 +553,13 @@ namespace dynamicgraph
         t_1_ = inTime;
 
         //Rotate posture of lw as the waist yaw
-        la.extract(Ryaw);
-        lw.extract(xlw_);
-        pos_ini_.extract(Rlw);
-        Ryaw.multiply(Rlw, Rrot);
-        lw.buildFrom(Rrot, xlw_);
 
-        lw.extract(xreft_1_);
-        //Rinv.multiply(xlw_, xreft_1_local_);
+        xlw_ = extractVector(lw);
+        Rrot = Ryaw * pos_ini_;    
+        lw = buildfrom(xlw_, Rrot);
+
+        xreft_1_ = xlw_; 
+
 #ifdef DEBUG
         res_ << inTime << "	" << "++++++ ref local = " << xreft_1_local_ << std::endl;
 #endif
@@ -680,45 +619,41 @@ namespace dynamicgraph
         const MatrixHomogeneous& R = lwSIN(inTime);
         force.resize(3);
         ff_.setZero(); fR_.setZero(); ft_.setZero();
+        Eigen::Matrix3d MRot;
 
         if (inTime != tf_1_)
         {
           ft_(2) = fin(2);
           ft_(0) = -fin(1);
           ft_(1) = fin(0);
-          R.extract (MRot_);
-          MRot_.multiply (ft_, fR_);
+          MRot = extractMatrix(R);
+          fR_ = MRot * ft_;
 
           if( (ff_2_(2) == 0.0) && (ff_1_(2) == 0))
           {
-            for(unsigned i=0; i < 3; i++)
-            {
-              ff_1_(i) = fR_(i);
-              ff_2_(i) = fR_(i);
-              fRt_1_(i) = fR_(i);
-              fRt_2_(i) = fR_(i);
-            }
+            ff_1_ = fR_;
+            ff_2_ = fR_;
+            fRt_1_ = fR_;
+            fRt_2_ = fR_;
+          
 #ifdef DEBUG
             res_ << "f0: " << fR_ << ", " << ff_2_ << std::endl;
 #endif
           }
 
-          for(unsigned i=0; i < 3; i++)
-          {
-            fraw_(i) = fR_(i);
-            ff_(i) = (0.00024136*fR_(i)) + (0.00048272*fRt_1_(i)) + (0.00024136*fRt_2_(i)) + (1.95557824*ff_1_(i)) - (0.95654368*ff_2_(i));
-            ff_2_(i) = ff_1_(i);
-            ff_1_(i) = ff_(i);
-            fRt_2_(i) = fRt_1_(i);
-            fRt_1_(i) = fR_(i);
-            force(i) = ff_(i);
-          }
+          fraw_ = fR_;
+          ff_ = (0.00024136*fR_) + (0.00048272*fRt_1_) + (0.00024136*fRt_2_) + (1.95557824*ff_1_) - (0.95654368*ff_2_);
+          ff_2_ = ff_1_;
+          ff_1_ = ff_;
+          fRt_2_ = fRt_1_;
+          fRt_1_ = fR_;
+          force = fill(ff_);
 
           tf_1_ = inTime;
         }
         else
         {
-          force = ff_1_;
+          force = fill(ff_1_);
         }
 
         return force;
@@ -795,6 +730,55 @@ namespace dynamicgraph
       {
         close_ = true;
         open_ = false;
+      }
+
+      inline Eigen::Vector3d ImpedanceController::extractVector(const MatrixHomogeneous& m)
+      {
+        Eigen::Vector3d v;
+        for(unsigned int i=0; i<v.size(); i++)
+            v(i) = m(i, 3);
+
+        return v;
+      }
+
+      inline Eigen::MatrixXd ImpedanceController::extractMatrix(const MatrixHomogeneous& m)
+      {
+        Eigen::MatrixXd res;
+        res.resize(3,3);
+        for(unsigned int i=0; i<res.rows(); i++)
+        {
+          for(unsigned int j=0; j<res.cols(); j++)
+            res(i, j) = m(i, j);
+        }
+
+        return res;
+      }
+
+      inline MatrixHomogeneous ImpedanceController::buildfrom(Eigen::Vector3d& v, Eigen::MatrixXd& m)
+      {
+        MatrixHomogeneous a;
+            
+        for(unsigned int i=0; i<3; i++)
+        {
+          a(i, 3) = v(i);
+          a(3, i) = 0.0;
+          for(unsigned int j=0; j<3; j++)
+            a(i, j) = m(i, j);
+        }
+        a(3,3) = 1.0;
+
+        return a;
+      }
+
+      inline Vector ImpedanceController::fill(Eigen::Vector3d& v)
+      {
+        Vector a;
+        a.resize(3);
+        
+        for(unsigned int i=0; i<3; i++)
+            a(i) = v(i);
+        
+        return a;
       }
 
       DYNAMICGRAPH_FACTORY_ENTITY_PLUGIN(ImpedanceController, "ImpedanceController");

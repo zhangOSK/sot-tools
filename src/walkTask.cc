@@ -41,7 +41,7 @@ namespace dynamicgraph
         rightFootSIN(0, "walkTask("+inName+")::input(MatrixHomo)::rightfootSIN"),
         leftFootSIN(0, "walkTask("+inName+")::input(MatrixHomo)::leftfootSIN"),
         velocitySOUT(waistSIN, "walkTask("+inName+")::output(vector)::velocitydesOUT"),
-        gain_(0.20), A_(0.0), B_(0.0), C_(0.0), eyt_1_(0.0), posDes_(), e_(0.0), e_dot_(0.0), t_1_(0), init_(false), iniTime_(std::tm())
+        gain_(0.20), A_(0.0), B_(0.0), C_(0.0), eyt_1_(0.0), posDes_(), e_(0.0), e_dot_(0.0), t_1_(0), init_(false)
       {
         // Register signals into the entity.
         signalRegistration (waistSIN);
@@ -53,15 +53,10 @@ namespace dynamicgraph
         velocitySOUT.addDependency( leftFootSIN  );
         velocitySOUT.addDependency( waistSIN  );
 
-        posDes_.resize(3);
-        posDes_.setZero();
-        posL_.resize(3);  posR_.resize(3);
-        posL_.setZero();  posR_.setZero();
-
-        pos_.resize(3);  erot_.resize(3);
+        
+        posDes_.setZero();  posL_.setZero();  posR_.setZero();
         pos_.setZero();  erot_.setZero();
 
-        e_.resize(3);    e_dot_.resize(3);  max_vel_.resize(3); factor_.resize(3);  tolerance_.resize(3);   endVel_.resize(3);
         e_.setZero();    e_dot_.setZero();  max_vel_.setZero(); factor_.setZero();  tolerance_.setZero();   endVel_.setZero();
 
         max_vel_(0) = 0.1;  max_vel_(1) = 0.1;   max_vel_(2) = 0.08;
@@ -72,9 +67,7 @@ namespace dynamicgraph
         double mag = posDes_.norm();
         gain_ = max_vel_(0)/mag;
 
-        iniTime_.tm_hour = 9;	iniTime_.tm_min = 50;	iniTime_.tm_sec = 0;
-        iniTime_.tm_year = 115;	iniTime_.tm_mon = 11;	iniTime_.tm_mday = 1;
-        // year counted from 1900
+
 #ifdef DEBUG
         pose_file_.open("/tmp/WaistPosition.txt", std::ios::out);
         vel_file_.open("/tmp/CommandedVelocity.txt", std::ios::out);
@@ -141,13 +134,14 @@ namespace dynamicgraph
         bool dataReadFF = false ;
         veldes.resize(3);
         veldes.setZero();
+        Eigen::MatrixXd Rot, Rinv;
 
         try
         {
           const MatrixHomogeneous & leftfoot = leftFootSIN(inTime);
           const MatrixHomogeneous & rightfoot = rightFootSIN(inTime);
           leftfoot.extract(posL_);
-          leftfoot.extract(Rot_);
+          Rot = extractMatrix(leftfoot);
           rightfoot.extract(posR_);
           pos_(2) = getYaw(leftfoot);
           pos_(0) = ( posL_(0) + posR_(0) )*0.5;
@@ -163,8 +157,8 @@ namespace dynamicgraph
           try
           {
             const MatrixHomogeneous & Rwaist = waistSIN(inTime);
-            Rwaist.extract(pos_);
-            Rwaist.extract(Rot_);
+            pos_ = extractVector(Rwaist);
+            Rot = extractMatrix(Rwaist);
             pos_(2) = getYaw(Rwaist);
             dataReadFF=true;
           }catch(...)
@@ -192,8 +186,8 @@ namespace dynamicgraph
           pose_file_ << " " << posDes_(i);
 #endif
         }
-        Rot_.inverse(Rinv_);
-        Rinv_.multiply(erot_, e_);
+        Rinv = Rot.inverse();
+        e_ = Rinv * erot_;
         e_(2) = erot_(2);
         double g = computeGain();
         for(unsigned int i=0; i<3; i++)
@@ -256,9 +250,31 @@ namespace dynamicgraph
 
       double walkTask::getYaw(const MatrixHomogeneous& Rw)
       {
-        Rw.extract(Rota_);
-        rpy_.fromMatrix(Rota_);
-        return rpy_(2);
+        double yaw;
+        yaw = atan2( Rw(1,0), Rw(0,0));
+        return yaw;
+      }
+
+      inline Eigen::Vector3d walkTask::extractVector(const MatrixHomogeneous& m)
+      {
+        Eigen::Vector3d v;
+        for(unsigned int i=0; i<v.size(); i++)
+            v(i) = m(i, 3);
+
+        return v;
+      }
+
+      inline Eigen::MatrixXd walkTask::extractMatrix(const MatrixHomogeneous& m)
+      {
+        Eigen::MatrixXd res;
+        res.resize(3,3);
+        for(unsigned int i=0; i<res.rows(); i++)
+        {
+          for(unsigned int j=0; j<res.cols(); j++)
+            res(i, j) = m(i, j);
+        }
+
+        return res;
       }
 
       DYNAMICGRAPH_FACTORY_ENTITY_PLUGIN(walkTask, "walkTask");

@@ -16,6 +16,10 @@
 #include <iostream>
 #include <fstream>
 #include <time.h>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/LU>
+
+//#define DEBUG
 
 namespace dynamicgraph {
   namespace sot {
@@ -61,12 +65,17 @@ namespace dynamicgraph {
         }
 
         void setForceDes (const Vector& inForce) {
-          fd_ = inForce;
+          fd_ = Eigen::Vector3d(inForce(0), inForce(1), inForce(2));
         }
 
 
         Vector getForceDes () const {
-          return fd_;
+          Vector res;
+          res.resize(3);
+          for(unsigned int i=0; i<3; i++)
+            res(i) = fd_(i);
+
+          return res;
         }
 
         void start();
@@ -76,6 +85,11 @@ namespace dynamicgraph {
 
         void openGripper();
         void closeGripper();
+
+        inline Eigen::Vector3d extractVector(const MatrixHomogeneous& m);
+        inline Eigen::MatrixXd extractMatrix(const MatrixHomogeneous& m);
+        inline MatrixHomogeneous buildfrom(Eigen::Vector3d& v, Eigen::MatrixXd& m);
+        inline Vector fill(Eigen::Vector3d& v);
 
       protected:
 
@@ -102,28 +116,25 @@ namespace dynamicgraph {
         double m_, c_;
         int mx_, cx_;
         double dy_, max_dx_, dist_, vel_fix_;
-        Vector xt_1_, xt_1_local_, q0_, xct_1_, xlat_1_, xlat_2_, xrat_1_, xrat_2_, xcft_1_, xcft_2_, xreft_1_, xreft_1_local_;
+        Eigen::Vector3d xt_1_, xt_1_local_, xct_1_, xlat_1_, xlat_2_, xrat_1_, xrat_2_, xcft_1_, xcft_2_, xreft_1_, xreft_1_local_;
         int t_1_, tf_1_, elapsed_;
-        Vector fd_, f_ini_, ff_1_, ff_2_, fraw_;
-        Vector fRt_1_, fRt_2_;
-        MatrixHomogeneous lw_initial_, lwct_1_, pos_ini_;
+        Eigen::Vector3d fd_, f_ini_, ff_1_, ff_2_, fraw_;
+        Eigen::Vector3d fRt_1_, fRt_2_, fR_, ff_, ft_;
+        Eigen::MatrixXd pos_ini_, ;
 
         // Temporary variables for internal computations
-        Vector qt_;
-        Vector xt_local_, fr_local_, xcf_world_, xw_local_, xw_;
-        Vector xd_local_;
-        Vector xt_, xg_, imp_, df_, xla_, xra_, fla_, fra_ ;
-        Vector fstatic_, vla_, vra_, xcf_, xlw_, xrot_, xini_;
-        MatrixRotation MRot_;
-        Vector fR_, ff_, ft_;
+        Vector q0_, qt_;
+        Eigen::Vector3d xt_local_, fr_local_, xcf_world_, xw_local_, xw_;
+        Eigen::Vector3d xd_local_;
+        Eigen::Vector3d xt_, xg_, imp_, df_, xla_, xra_, fla_, fra_ ;
+        Eigen::Vector3d fstatic_, vla_, vra_, xcf_, xlw_, xrot_, xini_;
 
         // Temporary useful variables for internal computations
-        MatrixRotation Rot_;
         bool start_, stop_, hold_, init_, walk_, walkStop_, open_, close_;
-        std::ofstream wrist_, force_, res_, pos_, check_;
 
-        //For realtime
-        struct tm iniTime_;
+#ifdef DEBUG
+        std::ofstream wrist_, force_, res_, pos_, check_;
+#endif
 
       }; // class ImpedanceController
     } // namespace tools

@@ -18,6 +18,10 @@
 #include <fstream>
 #include <time.h>
 #include <math.h>
+#include <eigen3/Eigen/Core>
+#include <eigen3/Eigen/LU>
+
+//#define DEBUG
 
 namespace dynamicgraph {
   namespace sot {
@@ -67,15 +71,18 @@ namespace dynamicgraph {
 
         void setGoalPosition (const Vector& inPos)
         {
-	  posDes_ = inPos;
+	      posDes_ = Eigen::Vector3d(inPos(0), inPos(1), inPos(2));
           double mag = posDes_.norm();
           gain_ = max_vel_(0)/mag;
         }
 
         void setErrorTolerance (const Vector& inTolerance)
         {
-          tolerance_ = inTolerance;
+          tolerance_ = Eigen::Vector3d(inTolerance(0), inTolerance(1), inTolerance(2));
         }
+
+        inline Eigen::Vector3d extractVector(const MatrixHomogeneous& m);
+        inline Eigen::MatrixXd extractMatrix(const MatrixHomogeneous& m);
 
       protected:
 
@@ -93,23 +100,19 @@ namespace dynamicgraph {
         SignalTimeDependent < ::dynamicgraph::Vector, int > velocitySOUT;
 
         ///
-        double gain_, A_, B_, C_, eyt_1_, rms_;
-        Vector posDes_, e_, e_dot_, max_vel_, factor_, tolerance_, endVel_;
+        double gain_, A_, B_, C_, eyt_1_;
+        Eigen::Vector3d posDes_, e_, e_dot_, max_vel_, factor_, tolerance_, endVel_;
         int t_1_;
         bool init_;
 
         // Temporary variables for internal computations
-        MatrixRotation Rot_, Rinv_;
-        Vector pos_, erot_;
-        MatrixRotation Rota_;
-        VectorRollPitchYaw rpy_;
+        Eigen::Vector3d pos_, erot_;
         Vector posL_,posR_;
 
+#ifdef DEBUG
         // debugging damping variable
         std::ofstream pose_file_, vel_file_;
-
-        //For realtime
-        struct tm iniTime_;
+#endif
 
       }; // class walkTask
     } // namespace tools

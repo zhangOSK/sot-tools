@@ -258,7 +258,7 @@ namespace dynamicgraph
       inline Eigen::Vector3d walkTask::extractVector(const MatrixHomogeneous& m)
       {
         Eigen::Vector3d v;
-        for(unsigned int i=0; i<v.size(); i++)
+        for(int i=0; i<v.size(); i++)
             v(i) = m(i, 3);
 
         return v;
@@ -268,9 +268,9 @@ namespace dynamicgraph
       {
         Eigen::MatrixXd res;
         res.resize(3,3);
-        for(unsigned int i=0; i<res.rows(); i++)
+        for(int i=0; i<res.rows(); i++)
         {
-          for(unsigned int j=0; j<res.cols(); j++)
+          for(int j=0; j<res.cols(); j++)
             res(i, j) = m(i, j);
         }
 

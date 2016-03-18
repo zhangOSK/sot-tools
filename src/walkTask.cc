@@ -41,22 +41,19 @@ namespace dynamicgraph
         rightFootSIN(0, "walkTask("+inName+")::input(MatrixHomo)::rightfootSIN"),
         leftFootSIN(0, "walkTask("+inName+")::input(MatrixHomo)::leftfootSIN"),
         velocitySOUT(waistSIN, "walkTask("+inName+")::output(vector)::velocitydesOUT"),
-        gain_(0.20), A_(0.0), B_(0.0), C_(0.0), eyt_1_(0.0), posDes_(), e_(0.0), e_dot_(0.0), t_1_(0), init_(false)
+        gain_(0.20), A_(0.0), B_(0.0), C_(0.0), eyt_1_(0.0), t_1_(0), init_(false)
       {
         // Register signals into the entity.
-        signalRegistration (waistSIN);
-        signalRegistration (rightFootSIN);
-        signalRegistration (leftFootSIN);
-        signalRegistration (velocitySOUT);
+        signalRegistration (waistSIN << rightFootSIN << leftFootSIN << velocitySOUT);
 
         velocitySOUT.addDependency( rightFootSIN  );
         velocitySOUT.addDependency( leftFootSIN  );
         velocitySOUT.addDependency( waistSIN  );
 
-        
-        posDes_.setZero();  posL_.setZero();  posR_.setZero();
-        pos_.setZero();  erot_.setZero();
+        posL_.resize(3);  posR_.resize(3);
+        posL_.setZero();  posR_.setZero();
 
+        posDes_.setZero(); pos_.setZero();  erot_.setZero();
         e_.setZero();    e_dot_.setZero();  max_vel_.setZero(); factor_.setZero();  tolerance_.setZero();   endVel_.setZero();
 
         max_vel_(0) = 0.1;  max_vel_(1) = 0.1;   max_vel_(2) = 0.08;
@@ -134,7 +131,7 @@ namespace dynamicgraph
         bool dataReadFF = false ;
         veldes.resize(3);
         veldes.setZero();
-        Eigen::MatrixXd Rot, Rinv;
+        Eigen::Matrix3d Rot, Rinv;
 
         try
         {
@@ -169,6 +166,7 @@ namespace dynamicgraph
 
         if(!dataReadFeet && !dataReadFF)
         {
+          assert(! (!dataReadFeet && !dataReadFF) );
           std::cout << "problem in walk task : no signal in input " << std::endl ;
           veldes.setZero();
           return veldes;
@@ -211,11 +209,7 @@ namespace dynamicgraph
             {
               veldes(i) = -max_vel_(i) ;
             }
-          }
-          else if( fabs(e_dot_(i)) < 0.0001)
-          {
-            veldes(i) = 0.0001 ;
-          }
+          }          
           else
           {
             veldes(i) = e_dot_(i);
@@ -224,6 +218,13 @@ namespace dynamicgraph
           vel_file_ << " " << veldes(i);
           pose_file_ << " " << e_(i);
 #endif
+        }
+
+        if( fabs(e_dot_(0)) + fabs(e_dot_(1)) + fabs(e_dot_(2)) < 0.0001)
+        {
+          veldes(0) = 0.0001 ;
+          veldes(1) = 0.0    ;
+          veldes(2) = 0.0    ;
         }
 
         eyt_1_ = e_(1);
@@ -264,9 +265,9 @@ namespace dynamicgraph
         return v;
       }
 
-      inline Eigen::MatrixXd walkTask::extractMatrix(const MatrixHomogeneous& m)
+      inline Eigen::Matrix3d walkTask::extractMatrix(const MatrixHomogeneous& m)
       {
-        Eigen::MatrixXd res;
+        Eigen::Matrix3d res;
         res.resize(3,3);
         for(int i=0; i<res.rows(); i++)
         {

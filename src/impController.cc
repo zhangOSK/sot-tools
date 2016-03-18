@@ -60,8 +60,6 @@ namespace dynamicgraph
         signalRegistration (postureSIN);
         signalRegistration (forceSOUT);
 
-        
-
         fraw_.setZero();    ff_1_.setZero();	ff_2_.setZero();    xt_1_local_.setZero();
         xcft_1_.setZero();  fRt_1_.setZero();	fRt_2_.setZero();	xcft_2_.setZero();
         xreft_1_.setZero(); fd_.setZero();      xct_1_.setZero();	xlat_1_.setZero();
@@ -85,7 +83,7 @@ namespace dynamicgraph
 
         // pos_ini_ should be the position of the left wrist in half sitting for hrp2
         //LEFT-WRIST
-        pos_ini_ = Eigen::MatrixXd::Zero(3, 3);
+        pos_ini_ = Eigen::Matrix3d::Zero(3, 3);
         pos_ini_(0,0) = 0.963962  ; pos_ini_(0,1) =0.0449441; pos_ini_(0,2) =-0.262218 ; //pos_ini_(0,3) =0.0418365;
         pos_ini_(1,0) = -0.0868231; pos_ini_(1,1) =0.984808 ; pos_ini_(1,2) =-0.150382 ; //pos_ini_(1,3) =0.331007 ;
         pos_ini_(2,0) = 0.251475  ; pos_ini_(2,1) =0.167729 ; pos_ini_(2,2) =0.953219  ; //pos_ini_(2,3) =0.704286 ;
@@ -206,7 +204,7 @@ namespace dynamicgraph
         const MatrixHomogeneous& R = lwSIN(inTime);
         const MatrixHomogeneous& la = laSIN(inTime);
         const MatrixHomogeneous& ra = raSIN(inTime);
-        const Vector& fr = forceSOUT.access(inTime);
+        const Vector& fr = forceSOUT(inTime);
         const Vector& qs = postureSIN(inTime);
         const Vector& vel = velocitySIN(inTime);
         const double& dt = 0.005; //inTime - t_1_;
@@ -216,10 +214,9 @@ namespace dynamicgraph
         xt_.setZero();
         xrot_.setZero();
         xlw_.setZero();
-        xini_.setZero();
         fstatic_.setZero();
 
-        Eigen::MatrixXd Ryaw, Rlw, Rrot, Rinv;
+        Eigen::Matrix3d Ryaw, Rlw, Rrot, Rinv;
         Eigen::Vector3d flw = Eigen::Vector3d( fr(0), fr(1), fr(2) );
 
         Ryaw = extractMatrix(la);
@@ -741,9 +738,9 @@ namespace dynamicgraph
         return v;
       }
 
-      inline Eigen::MatrixXd ImpedanceController::extractMatrix(const MatrixHomogeneous& m)
+      inline Eigen::Matrix3d ImpedanceController::extractMatrix(const MatrixHomogeneous& m)
       {
-        Eigen::MatrixXd res;
+        Eigen::Matrix3d res;
         res.resize(3,3);
         for(int i=0; i<res.rows(); i++)
         {
@@ -754,7 +751,7 @@ namespace dynamicgraph
         return res;
       }
 
-      inline MatrixHomogeneous ImpedanceController::buildfrom(Eigen::Vector3d& v, Eigen::MatrixXd& m)
+      inline MatrixHomogeneous ImpedanceController::buildfrom(Eigen::Vector3d& v, Eigen::Matrix3d& m)
       {
         MatrixHomogeneous a;
             

@@ -82,7 +82,7 @@ namespace dynamicgraph {
         }
 
         inline Eigen::Vector3d extractVector(const MatrixHomogeneous& m);
-        inline Eigen::MatrixXd extractMatrix(const MatrixHomogeneous& m);
+        inline Eigen::Matrix3d extractMatrix(const MatrixHomogeneous& m);
 
       protected:
 

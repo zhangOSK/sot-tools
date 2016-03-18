@@ -87,8 +87,8 @@ namespace dynamicgraph {
         void closeGripper();
 
         inline Eigen::Vector3d extractVector(const MatrixHomogeneous& m);
-        inline Eigen::MatrixXd extractMatrix(const MatrixHomogeneous& m);
-        inline MatrixHomogeneous buildfrom(Eigen::Vector3d& v, Eigen::MatrixXd& m);
+        inline Eigen::Matrix3d extractMatrix(const MatrixHomogeneous& m);
+        inline MatrixHomogeneous buildfrom(Eigen::Vector3d& v, Eigen::Matrix3d& m);
         inline Vector fill(Eigen::Vector3d& v);
 
       protected:
@@ -120,7 +120,7 @@ namespace dynamicgraph {
         int t_1_, tf_1_, elapsed_;
         Eigen::Vector3d fd_, f_ini_, ff_1_, ff_2_, fraw_;
         Eigen::Vector3d fRt_1_, fRt_2_, fR_, ff_, ft_;
-        Eigen::MatrixXd pos_ini_, ;
+        Eigen::Matrix3d pos_ini_, ;
 
         // Temporary variables for internal computations
         Vector q0_, qt_;

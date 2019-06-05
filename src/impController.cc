@@ -262,8 +262,12 @@ namespace dynamicgraph
           if(hold_)
           {
             lw(0, 3) = (3*R(0,3) + (qs(0) +xrot_(0)) + 2*xreft_1_(0))/6;
+            //    current lw pos + (waist + rotation matrix) + last desired lw pos(t-1))/6  This is for filtering the pos of lw.
+            // Because the real lw force is jumping. Waights 3,2 are added on current lw and last desired lw respectively.
             lw(1, 3) = ( (qs(1)+xrot_(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
-            lw(2, 3) = (3*R(2,3) + (qs(2)-0.648703+xini_(2)) + 2*xreft_1_(2))/6;
+            lw(2, 3) = (3*R(2,3) + (qs(2)-0.648703+xini_(2)) + 2*xreft_1_(2))/6; 
+            //SoT gives
+            priority to lower body, so the z of lw and waist can not be too low
 #ifdef DEBUG
             res_ << "**" << inTime << "	" << lw << std::endl;
             wrist_ << inTime;
@@ -275,8 +279,8 @@ namespace dynamicgraph
             wrist_ << "	" << la(2, 3) << "	" << ra(2, 3) << "	0.001	0.001	" << realTime << std::endl;
 #endif
 
-            xt_1_ = extractVector(R);
-            xreft_1_ = extractVector(lw);
+            xt_1_ = extractVector(R);     // record real lw pos as previous sampling time (t-1)
+            xreft_1_ = extractVector(lw); // record desired lw pos as t-1
 
           }
 
@@ -391,7 +395,7 @@ namespace dynamicgraph
           fr_local_(1) = 0.0;
           
           xg_ = (((dt * dt) / m_ ) * (fr_local_ - (fd_ - fstatic_) - ((c_/dt) * (xt_local_ - xt_1_local_)) )) + (2 * xt_local_) - xt_1_local_;
-          vra_ = (xg_ + (2*xcft_1_) + xcft_2_)/4;
+          vra_ = (xg_ + (2*xcft_1_) + xcft_2_)/4; //Not well designed. vra_ may not relate to vel of right ankle. It's like average vel of lw.
           xct_1_ = xg_;
           xcft_2_ = xcft_1_;
           xcft_1_ = vra_;
@@ -487,7 +491,7 @@ namespace dynamicgraph
 
 #ifdef DEBUG
           for(unsigned i=0; i < 3; i++)
-            imp_(i) = ((m_ / (dt * dt) ) * (xg_(i) - (2*xt_local_(i)) + xt_1_local_(i) )) + ( (c_/dt) * (xt_local_(i) - xt_1_local_(i)) );
+            imp_(i) = ((m_ / (dt * dt) ) * (xg_(i) - (2*xt_local_(i)) + xt_1_local_(i) )) + ( (c_/dt) * (xt_local_(i) - xt_1_local_(i)) ); // force
 
           df_ = fd_ - fstatic_;
 
@@ -624,7 +628,7 @@ namespace dynamicgraph
           ft_(0) = -fin(1);
           ft_(1) = fin(0);
           MRot = extractMatrix(R);
-          fR_ = MRot * ft_;
+          fR_ = MRot * ft_; // force of lw in local frame
 
           if( (ff_2_(2) == 0.0) && (ff_1_(2) == 0))
           {

@@ -240,8 +240,8 @@ namespace dynamicgraph
 #endif
           }
 
-          xt_ = extractVector(R);
-          xt_1_local_  = Rinv * xt_;
+          xt_ = extractVector(R);// lw pos, lw.translation
+          xt_1_local_  = Rinv * xt_; // Rinv related to ra, xt_local = R^T * Pos
 
           xt_1_ = extractVector(R);
           xct_1_ = xt_1_;

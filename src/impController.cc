@@ -219,7 +219,7 @@ namespace dynamicgraph
         Eigen::Matrix3d Ryaw, Rlw, Rrot, Rinv;
         Eigen::Vector3d flw = Eigen::Vector3d( fr(0), fr(1), fr(2) );
 
-        Ryaw = extractMatrix(la);
+        Ryaw = extractMatrix(la);//from left ankle to get yaw info?
         Rinv = Ryaw.inverse();
         
         if(!start_ || stop_ || hold_)

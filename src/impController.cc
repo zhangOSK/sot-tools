@@ -264,6 +264,7 @@ namespace dynamicgraph
             lw(0, 3) = (3*R(0,3) + (qs(0) +xrot_(0)) + 2*xreft_1_(0))/6;
             //    current lw pos + (waist + rotation matrix) + last desired lw pos(t-1))/6  This is for filtering the pos of lw.
             //    world frame      (world + la frame       )
+            // I don't think the second factor is needed. It is the lw in half-sitting position.
             // Because the real lw force is jumping. Waights 3,2 are added on current lw and last desired lw respectively.
             lw(1, 3) = ( (qs(1)+xrot_(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
             lw(2, 3) = (3*R(2,3) + (qs(2)-0.648703+xini_(2)) + 2*xreft_1_(2))/6; 

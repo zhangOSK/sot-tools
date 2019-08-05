@@ -219,7 +219,7 @@ namespace dynamicgraph
         Eigen::Matrix3d Ryaw, Rlw, Rrot, Rinv;
         Eigen::Vector3d flw = Eigen::Vector3d( fr(0), fr(1), fr(2) );
 
-        Ryaw = extractMatrix(la);//from left ankle to get yaw info?
+        Ryaw = extractMatrix(la);//from left ankle, to get rotation matrix
         Rinv = Ryaw.inverse();
         
         if(!start_ || stop_ || hold_)
@@ -230,7 +230,7 @@ namespace dynamicgraph
           {
             // Save the distance from wrist to the  waist at the starting position
             dy_ = R(1, 3)-qs(1);
-            xreft_1_ = extractVector(R);
+            xreft_1_ = extractVector(R); //get translation vector of leftWrist
 
             init_ = true;
             //f_ini_ = Eigen::Vector3d(fr(0), fr(1), fr(2));
@@ -241,7 +241,7 @@ namespace dynamicgraph
           }
 
           xt_ = extractVector(R);// lw pos, lw.translation
-          xt_1_local_  = Rinv * xt_; // Rinv related to la, xt_local = R^T * Pos
+          xt_1_local_  = Rinv * xt_; // Rinv = la's rotation^T, xt_local = R^T * Pos, lw pos in la frame
 
           xt_1_ = extractVector(R);
           xct_1_ = xt_1_;
@@ -252,7 +252,7 @@ namespace dynamicgraph
           xcft_1_ = xct_1_;
           xcft_2_ = xct_1_;
           
-          lw = buildfrom(xini_, pos_ini_);
+          lw = buildfrom(xini_, pos_ini_); // buildfrom(vector, matrix)
          
           lw(0,3) = qs(0)+xrot_(0);
           lw(1,3) = qs(1)+xrot_(1);
@@ -280,13 +280,14 @@ namespace dynamicgraph
 #endif
 
             xt_1_ = extractVector(R);     // record real lw pos as previous sampling time (t-1)
-            xreft_1_ = extractVector(lw); // record desired lw pos as t-1
+            xreft_1_ = extractVector(lw); // record (desired/la frame ?) lw pos at t-1
 
           }
 
           if(stop_)
           {
             lw = R;
+            //        ( (waist+xrot?     + 3*lw (current) + 2*lw(t-1))
             lw(0,3) = ( (qs(0)+xrot_(0)) + 3*R(0,3) + 2*xreft_1_(0))/6;
             lw(1,3) = ( (qs(1)+xrot_(1)) + 3*R(1,3) + 2*xreft_1_(1))/6;
             lw(2,3) = ( (qs(2)-0.648703+xini_(2)) + 3*R(2,3) + 2*xreft_1_(2))/6;
@@ -296,7 +297,7 @@ namespace dynamicgraph
           }  
 
           xlw_= extractVector(lw);
-          xreft_1_local_ = Rinv * xlw_;
+          xreft_1_local_ = Rinv * xlw_; //xlw in la frame
         }
         else if (start_)
         {
@@ -371,7 +372,7 @@ namespace dynamicgraph
 #endif
           }
 
-          if( (xla_(2) < 0.1051) && (xra_(2) < 0.1051) && walk_ && !walkStop_)
+          if( (xla_(2) < 0.1051) && (xra_(2) < 0.1051) && walk_ && !walkStop_) //in DS phase
           {
             if(elapsed_ == 0)
               vel_fix_ = vel(0);
@@ -382,26 +383,27 @@ namespace dynamicgraph
           else
           {
             elapsed_ = 0;
-            fstatic_.setZero();
+            fstatic_.setZero();// fstatic_, force to pull in DS
           }
 
           fr_local_.setZero();  xt_local_.setZero();
           xcf_world_.setZero(); xw_.setZero(); xw_local_.setZero();
-          fr_local_ = Rinv * flw;    //          Rinv.multiply(fr, fr_local_);
-          xt_local_ = Rinv * xt_;      //  Rinv.multiply(xt_, xt_local_);
+          fr_local_ = Rinv * flw;    //          Rinv.multiply(fr, fr_local_);  //freal in la frame
+          xt_local_ = Rinv * xt_;      //  Rinv.multiply(xt_, xt_local_);       //xt_ in la frame
           xw_(0) = qs(0);    xw_(1) = qs(1);  xw_(2) = qs(2);
-          xw_local_ = Rinv * xw_;
+          xw_local_ = Rinv * xw_; 
 
           fr_local_(1) = 0.0;
-          
+          // xg in la frame
           xg_ = (((dt * dt) / m_ ) * (fr_local_ - (fd_ - fstatic_) - ((c_/dt) * (xt_local_ - xt_1_local_)) )) + (2 * xt_local_) - xt_1_local_;
-          vra_ = (xg_ + (2*xcft_1_) + xcft_2_)/4; //Not well designed. vra_ may not relate to vel of right ankle. It's like average vel of lw.
+          vra_ = (xg_ + (2*xcft_1_) + xcft_2_)/4; //Not well designed. vra_ is average pos of lw. vra_ (t)= x(t) + 2x(t-1) + x(t-2)
           xct_1_ = xg_;
           xcft_2_ = xcft_1_;
-          xcft_1_ = vra_;
+          xcft_1_ = vra_; 
 
           xd_local_.setZero();  
           for(unsigned i=0; i < 3; i++)
+          //xd in la     = (imp     + lw after line264  + current lw)/3  
             xd_local_(i) = (vra_(i) + xreft_1_local_(i) + xt_local_(i))/3;
 
           //In Y, keep the distance at starting position with the waist, always!!

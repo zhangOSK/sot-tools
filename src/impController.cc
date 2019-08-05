@@ -82,7 +82,7 @@ namespace dynamicgraph
 //        0	0	0	1
 
         // pos_ini_ should be the position of the left wrist in half sitting for hrp2
-        //LEFT-WRIST
+        //LEFT-WRIST  //lw is based on waist frame???
         pos_ini_ = Eigen::Matrix3d::Zero(3, 3);
         pos_ini_(0,0) = 0.963962  ; pos_ini_(0,1) =0.0449441; pos_ini_(0,2) =-0.262218 ; //pos_ini_(0,3) =0.0418365;
         pos_ini_(1,0) = -0.0868231; pos_ini_(1,1) =0.984808 ; pos_ini_(1,2) =-0.150382 ; //pos_ini_(1,3) =0.331007 ;
@@ -252,7 +252,7 @@ namespace dynamicgraph
           xcft_1_ = xct_1_;
           xcft_2_ = xct_1_;
           
-          lw = buildfrom(xini_, pos_ini_); // buildfrom(vector, matrix)
+          lw = buildfrom(xini_, pos_ini_); // buildfrom(vector, matrix),,,in waist frame??
          
           lw(0,3) = qs(0)+xrot_(0);
           lw(1,3) = qs(1)+xrot_(1);
